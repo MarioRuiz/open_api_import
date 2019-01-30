@@ -1,6 +1,8 @@
 # OpenApiImport
 
 [![Gem Version](https://badge.fury.io/rb/open_api_import.svg)](https://rubygems.org/gems/open_api_import)
+[![Build Status](https://travis-ci.com/MarioRuiz/open_api_import.svg?branch=master)](https://github.com/MarioRuiz/open_api_import)
+[![Coverage Status](https://coveralls.io/repos/github/MarioRuiz/open_api_import/badge.svg?branch=master)](https://coveralls.io/github/MarioRuiz/open_api_import?branch=master)
 
 Import a Swagger or Open API file and create a Ruby Request Hash file including all requests and responses with all the examples. The file can be in JSON or YAML.
 
