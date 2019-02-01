@@ -311,6 +311,18 @@ class OpenApiImport
               output << description_parameters
             end
 
+            #for the case we still have some parameters on path that were not in 'parameters'
+            if path_txt.match?(/[^#]{\w+}/)
+              paramst = []
+              prms = path_txt.scan(/[^#]{(\w+)}/)
+              prms.each do |p|
+                paramst<<p[0].to_s.snake_case
+                path_txt.gsub!("{#{p[0]}}", "\#{#{p[0].to_s.snake_case}}")
+              end
+              paramst.concat params
+              params = paramst
+            end
+            
             output << "def self.#{method_name} (#{params.join(", ")})"
 
             output << "{"
