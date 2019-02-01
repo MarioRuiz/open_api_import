@@ -312,7 +312,7 @@ class OpenApiImport
             end
 
             #for the case we still have some parameters on path that were not in 'parameters'
-            if path_txt.match?(/[^#]{\w+}/)
+            if path_txt.scan(/[^#]{\w+}/).size > 0
               paramst = []
               prms = path_txt.scan(/[^#]{(\w+)}/)
               prms.each do |p|
