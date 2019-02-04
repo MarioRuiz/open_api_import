@@ -113,6 +113,7 @@ class OpenApiImport
             params = []
             params_path = []
             params_query = []
+            params_required = []
             description_parameters = []
             data_required = []
             data_read_only = []
@@ -211,19 +212,23 @@ class OpenApiImport
               cont[:parameters].each do |p|
                 if p[:in] == "path"
                   if create_method_name == :operationId
-                    params_path << p[:name]
-                    path_txt.gsub!("{#{p[:name]}}", "\#{#{p[:name]}}")
+                    param_name = p[:name]
+                    path_txt.gsub!("{#{param_name}}", "\#{#{param_name}}")
                   else
-                    params_path << p[:name].to_s.snake_case
-                    path_txt.gsub!("{#{p[:name]}}", "\#{#{p[:name].to_s.snake_case}}")
+                    param_name = p[:name].to_s.snake_case
+                    path_txt.gsub!("{#{p[:name]}}", "\#{#{param_name}}")
                   end
+                  params_path << param_name
+                  #params_required << param_name if p[:required].to_s=="true"
+
                   if p.keys.include?(:description)
-                    description_parameters << "#    #{p[:name]}: (#{p[:type]}) #{p[:description]}"
+                    description_parameters << "#    #{p[:name]}: (#{p[:type]}) #{"(required)" if p[:required].to_s=="true"} #{p[:description]}"
                   end
                 elsif p[:in] == "query"
                   params_query << p[:name]
+                  params_required << p[:name] if p[:required].to_s=="true"
                   if p.keys.include?(:description)
-                    description_parameters << "#    #{p[:name]}: (#{p[:type]}) #{p[:description]}"
+                    description_parameters << "#    #{p[:name]}: (#{p[:type]}) #{"(required)" if p[:required].to_s=="true"} #{p[:description]}"
                   end
                 elsif p[:in] == "body"
                   if p.keys.include?(:schema)
@@ -294,13 +299,27 @@ class OpenApiImport
 
               unless params_query.empty?
                 path_txt += "?"
+                params_required.each do |pr|
+                  if params_query.include?(pr)
+                    if create_method_name == :operationId
+                      path_txt += "#{pr}=\#{#{pr}}&"
+                      params << "#{pr}"
+                    else
+                      path_txt += "#{pr}=\#{#{pr.to_s.snake_case}}&"
+                      params << "#{pr.to_s.snake_case}"
+                    end
+                      
+                  end
+                end
                 params_query.each do |pq|
-                  if create_method_name == :operationId
-                    path_txt += "#{pq}=\#{#{pq}}&"
-                    params << "#{pq}: ''"
-                  else
-                    path_txt += "#{pq}=\#{#{pq.to_s.snake_case}}&"
-                    params << "#{pq.to_s.snake_case}: ''"
+                  unless params_required.include?(pq)
+                    if create_method_name == :operationId
+                      path_txt += "#{pq}=\#{#{pq}}&"
+                      params << "#{pq}: ''"
+                    else
+                      path_txt += "#{pq}=\#{#{pq.to_s.snake_case}}&"
+                      params << "#{pq.to_s.snake_case}: ''"
+                    end
                   end
                 end
               end

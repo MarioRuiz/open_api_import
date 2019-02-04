@@ -159,7 +159,7 @@ RSpec.describe OpenApiImport do
             expect(content).to include('# operationId: unknown, method: get')
             expect(content).to include('# summary: Price Estimates')
             expect(content).to include('The Price Estimates endpoint returns an estimated price')
-            expect(content).to include('latitude: (number) Latitude component of location.')
+            expect(content).to include('latitude: (number) (required) Latitude component of location.')
         end
 
         it 'adds method key on request hash' do
