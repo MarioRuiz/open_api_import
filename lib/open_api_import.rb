@@ -179,6 +179,7 @@ class OpenApiImport
             end
 
             mock_example = []
+
             if include_responses && cont.key?(:responses) && cont[:responses].is_a?(Hash)
               cont[:responses].each do |k, v|
                 response_example = []
@@ -474,6 +475,9 @@ class OpenApiImport
       example = []
       example << "{" unless properties.empty?
       properties.each do |prop, val|
+        if val.key?(:properties) and !val.key?(:example) and !val.key?(:type)
+          val[:type]='object'
+        end
         if val.key?(:example)
           example << if val[:example].is_a?(String)
             " #{prop.to_sym}: \"#{val[:example]}\", "
