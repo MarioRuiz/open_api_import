@@ -3,7 +3,6 @@ require 'open_api_import'
 RSpec.describe OpenApiImport do
 
     describe '#from' do
-        
         it 'creates a log file if swagger_file is a valid string for a file name' do
             file_name = 'example.yaml'
             File.delete("#{file_name}_open_api_import.log") if File.exist?("#{file_name}_open_api_import.log")

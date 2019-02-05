@@ -93,13 +93,15 @@ class OpenApiImport
       module_requests = ""
 
       definition.paths.each do |path|
+
         raw = path.raw.deep_symbolize_keys
 
         if raw.key?(:parameters)
           raw.each do |met, cont|
             if met != :parameters
               if raw[met].key?(:parameters)
-                raw[met][:parameters] = raw[met][:parameters] & raw[:parameters]
+                #todo: check if in some cases the parameters on the method can be added to the ones in the path
+                #raw[met][:parameters] = raw[met][:parameters] & raw[:parameters]
               else
                 raw[met][:parameters] = raw[:parameters]
               end
@@ -109,6 +111,7 @@ class OpenApiImport
         end
 
         raw.each do |met, cont|
+
           if %w[get post put delete patch].include?(met.to_s.downcase)
             params = []
             params_path = []
@@ -186,7 +189,6 @@ class OpenApiImport
 
                 response_example = get_response_examples(v)
                 
-
                 if !response_example.empty?
                   responses << "'#{k}': { "
                   responses << "message: '#{v[:description]}', "
@@ -257,7 +259,11 @@ class OpenApiImport
                           if dpv.keys.include?(:example)
                             valv = dpv[:example]
                           else
-                            valv = ""
+                            if dpv.type == "object"
+                              valv = "{}"
+                            else  
+                              valv = ""
+                            end
                           end
                           if dpv.keys.include?(:description)
                             description_parameters << "#    #{dpk}: (#{dpv[:type]}) #{dpv[:description]}"
