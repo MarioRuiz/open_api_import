@@ -20,6 +20,8 @@ class OpenApiImport
   # @param name_for_module [Symbol]. (:path, :path_file, :fixed) (default: :path). How the module names will be created.
   #   path: It will be used the first folder of the path to create the module name, for example the path /users/list will be in the module Users and all the requests from all modules in the same file.
   #   path_file: It will be used the first folder of the path to create the module name, for example the path /users/list will be in the module Users and each module will be in a new requests file.
+  #   tags: It will be used the tags key to create the module name, for example the tags: [users,list] will create the module UsersList and all the requests from all modules in the same file.
+  #   tags_file: It will be used the tags key to create the module name, for example the tags: [users,list] will create the module UsersList and and each module will be in a new requests file.
   #   fixed: all the requests will be under the module Requests
   ##############################################################################################
   def self.from(swagger_file, create_method_name: :operation_id, include_responses: true, mock_response: false, name_for_module: :path)
