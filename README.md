@@ -196,11 +196,15 @@ The output will generate methods like this:
 
 How the module names will be created.
 
-Accepts three different options: :path, :path_file and :fixed. By default :path. 
+Accepts five different options: :path, :path_file, :tags, :tags_file and :fixed. By default :path. 
 
   path: It will be used the first folder of the path to create the module name, for example the path /users/list will be in the module Users and all the requests from all modules in the same file.
   
   path_file: It will be used the first folder of the path to create the module name, for example the path /users/list will be in the module Users and each module will be in a new requests file.
+
+  tags: It will be used the tags key to create the module name, for example the tags: \[users, list] will create the module UsersList and all the requests from all modules in the same file. In case the tags are equal to the beginning of the operationId then it will be removed from the method name.
+  
+  tags_file: It will be used the tags key to create the module name, for example the tags: \[users, list] will create the module UsersList and and each module will be in a new requests file. In case the tags are equal to the beginning of the operationId then it will be removed from the method name.
 
   fixed: all the requests will be under the module Requests
 
@@ -279,6 +283,37 @@ This is the output of the run:
 ** File that contains all the requires for all Request files:
   - /petstore-simple.yaml.rb
 ```
+
+In case using :tags
+
+```ruby
+  require 'open_api_import'
+
+  OpenApiImport.from "./spec/fixtures/v2.0/yaml/uber.yaml", name_for_module: :tags, create_method_name: :path
+
+```
+
+It will generate just one file including every request under the module generated from the first folder of the path
+
+```ruby
+module Swagger
+  module UberApi
+    module V1_0_0
+      module Products
+
+        # operationId: unknown, method: get
+        # summary: Product Types
+        # description:
+        #     The Products endpoint returns information about the Uber products offered at a given location. 
+        #     The response includes the display name and other details about each product, and lists the products in the proper display order.
+        # parameters description:
+        #    latitude: (number) (required) Latitude component of location.
+        #    longitude: (number) (required) Longitude component of location.
+        def self.get_products(latitude, longitude)
+...
+...
+```
+
 
 ### include_responses
 

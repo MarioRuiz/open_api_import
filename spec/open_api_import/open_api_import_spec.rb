@@ -56,6 +56,13 @@ RSpec.describe OpenApiImport do
             regexp = /module\sPets$/
             expect(File.read("#{file_name}.rb")).to match regexp
         end
+
+        it 'creates the module names correctly when name_for_module is :tags' do
+            file_name = './spec/fixtures/v2.0/yaml/uber.yaml'
+            OpenApiImport.from file_name, name_for_module: :tags
+            regexp = /module\sProducts$/
+            expect(File.read("#{file_name}.rb")).to match regexp
+        end
         
         it 'creates the file names correctly when name_for_module is :path_file' do
             file_name = './spec/fixtures/v2.0/yaml/petstore-simple.yaml'
@@ -65,11 +72,27 @@ RSpec.describe OpenApiImport do
             expect(File.exist?("#{file_name}.rb")).to eq true
         end
 
+        it 'creates the file names correctly when name_for_module is :tags_file' do
+            file_name = './spec/fixtures/v2.0/yaml/uber.yaml'
+            OpenApiImport.from file_name, name_for_module: :tags_file
+            expect(File.exist?("#{file_name}_Products.rb")).to eq true
+            expect(File.exist?("#{file_name}_Estimates.rb")).to eq true
+            expect(File.exist?("#{file_name}_User.rb")).to eq true
+        end
+
         it 'creates the module names correctly when name_for_module is :path_file' do
             file_name = './spec/fixtures/v2.0/yaml/petstore-simple.yaml'
             OpenApiImport.from file_name, name_for_module: :path_file
             expect(File.read("#{file_name}_Pets.rb")).to match /module\sPets$/
             expect(File.read("#{file_name}_Root.rb")).to match /module\sRoot$/
+        end
+
+        it 'creates the module names correctly when name_for_module is :tags_file' do
+            file_name = './spec/fixtures/v2.0/yaml/uber.yaml'
+            OpenApiImport.from file_name, name_for_module: :tags_file
+            expect(File.read("#{file_name}_Products.rb")).to match /module\sProducts$/
+            expect(File.read("#{file_name}_Estimates.rb")).to match /module\sEstimates$/
+            expect(File.read("#{file_name}_User.rb")).to match /module\sUser$/
         end
 
         it 'creates a file that requires all request files when name_for_module is :path_file' do
@@ -80,6 +103,15 @@ RSpec.describe OpenApiImport do
             expect(content).to include 'require_relative "petstore-simple.yaml_Pets"'
         end
 
+        it 'creates a file that requires all request files when name_for_module is :tags_file' do
+            file_name = './spec/fixtures/v2.0/yaml/uber.yaml'
+            OpenApiImport.from file_name, name_for_module: :tags_file
+            content = File.read("#{file_name}.rb")
+            expect(content).to include 'require_relative "uber.yaml_Products"'
+            expect(content).to include 'require_relative "uber.yaml_Estimates"'
+            expect(content).to include 'require_relative "uber.yaml_User"'
+        end
+        
         it 'logs warning when unsupported http method is on the swagger file' do
             file_name = './spec/fixtures/wrong/petstore-minimal_not_supported_method.yaml'
             OpenApiImport.from file_name

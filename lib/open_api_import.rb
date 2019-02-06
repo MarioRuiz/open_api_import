@@ -134,31 +134,48 @@ class OpenApiImport
               method_name = (met.to_s + "_" + path.path.to_s).snake_case
               method_name.chop! if method_name[-1] == "_"
             elsif create_method_name == :operation_id
-              method_name = (cont[:operationId]).to_s.snake_case
+              if (name_for_module == :tags or name_for_module == :tags_file) and cont.key?(:tags) and cont[:tags].is_a?(Array) and cont[:tags].size>0
+                metnametmp = cont[:operationId].gsub(/^#{cont[:tags].join}[\s_]*/, '')
+              else
+                metnametmp = cont[:operationId]
+              end
+              method_name = metnametmp.to_s.snake_case
             else
-              method_name = cont[:operationId]
+              if (name_for_module == :tags or name_for_module == :tags_file) and cont.key?(:tags) and cont[:tags].is_a?(Array) and cont[:tags].size>0
+                method_name = cont[:operationId].gsub(/^#{cont[:tags].join}[\s_]*/, '')
+              else
+                method_name = cont[:operationId]
+              end
             end
 
             path_txt = path.path.dup.to_s
-            if name_for_module == :path or name_for_module == :path_file
+            if [:path, :path_file, :tags, :tags_file].include?(name_for_module)
               old_module_requests = module_requests
-              # to remove version from path fex: /v1/Customer
-              path_requests = path_txt.gsub(/^\/v[\d\.]*\//i, "")
-              # to remove version from path fex: /1.0/Customer
-              path_requests = path_requests.gsub(/^\/[\d\.]*\//i, "")
-              if (path_requests == path_txt) && (path_txt.scan("/").size == 1)
-                # no folder in path
-                module_requests = "Root"
+              if [:path, :path_file].include?(name_for_module)
+                # to remove version from path fex: /v1/Customer
+                path_requests = path_txt.gsub(/^\/v[\d\.]*\//i, "")
+                # to remove version from path fex: /1.0/Customer
+                path_requests = path_requests.gsub(/^\/[\d\.]*\//i, "")
+                if (path_requests == path_txt) && (path_txt.scan("/").size == 1)
+                  # no folder in path
+                  module_requests = "Root"
+                else
+                  res_path = path_requests.scan(/(\w+)/)
+                  module_requests = res_path[0][0].camel_case
+                end
               else
-                res_path = path_requests.scan(/(\w+)/)
-                module_requests = res_path[0][0].camel_case
+                if cont.key?(:tags) and cont[:tags].is_a?(Array) and cont[:tags].size>0
+                  module_requests = cont[:tags].join(" ").camel_case
+                else
+                  module_requests = "Unknown"
+                end
               end
               if old_module_requests != module_requests
-                output << "end" unless old_module_requests == "" or name_for_module == :path_file
-                if name_for_module == :path
+                output << "end" unless old_module_requests == "" or name_for_module == :path_file or name_for_module == :tags_file
+                if name_for_module == :path or name_for_module == :tags
                   # to add the end for the previous module unless is the first one
                   output << "module #{module_requests}"
-                else #:path_file
+                else #:path_file, :tags_file
                   if old_module_requests != ""
                     unless files.key?(old_module_requests)
                       files[old_module_requests] = Array.new
@@ -166,7 +183,7 @@ class OpenApiImport
                     files[old_module_requests].concat(output)
                     output = Array.new
                   end
-                  output << "module #{module_requests}" unless files.key?(module_requests) # dont add in case already existed
+                  output << "module #{module_requests}" unless files.key?(module_requests) # don't add in case already existed
                 end
               end
             end
@@ -413,7 +430,7 @@ class OpenApiImport
 
       output_footer = []
 
-      output_footer << "end" unless (module_requests == "") && (name_for_module == :path or name_for_module == :path_file)
+      output_footer << "end" unless (module_requests == "") && ([:path, :path_file, :tags, :tags_file].include?(name_for_module))
       output_footer << "end" << "end" << "end"
 
       if files.size == 0
