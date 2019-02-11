@@ -57,7 +57,43 @@ Take in consideration open_api_import gem is using the 'rufo' gem that executes 
 
 ## Usage
 
-You have all the json and yaml examples that the Open API project supplies on /spec/fixtures/ folder. You can use any of those ones or your own Swagger or Open API file. To convert the Swagger or Open API file into a Request Hash:
+After installation you can run using command line executable or importing from Ruby.
+
+You have all the json and yaml examples that the Open API project supplies on /spec/fixtures/ folder. To test it you can use any of those ones or your own Swagger or Open API file. 
+
+### Executable
+
+For help and see the options, run in command line / bash: `open_api_import -h`
+
+Example: 
+```bash
+ open_api_import ./spec/fixtures/v2.0/yaml/uber.yaml -fp
+```
+
+This is the output:
+
+```
+Usage: open_api_import [open_api_file] [options]
+Import a Swagger or Open API file and create a Ruby Request Hash file including all requests and responses.
+More info: https://github.com/MarioRuiz/open_api_import
+
+In case no options supplied:
+  * It will be used the value of operation_id on snake_case for the name of the methods
+  * It will be used the first folder of the path to create the module name
+    -n, --no_responses               if you don't want to add the examples of responses in the resultant file.
+    -m, --mock                       Add the first response on the request as mock_response
+    -p, --path_method                it will be used the path and http method to create the method names
+    -o, --operationId_method         It will be used the operationId field like it is to create the method names
+    -f, --create_files               It will create a file per module
+    -T, --tags_module                It will be used the tags key to create the module name
+    -F, --fixed_module               all the requests will be under the module Requests
+```
+
+
+### Ruby file
+Write your ruby code on a file and in command line/bash: `ruby my_file.rb`
+
+To convert the Swagger or Open API file into a Request Hash:
 
 ```ruby
   require 'open_api_import'

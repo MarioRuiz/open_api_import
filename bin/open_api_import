@@ -1,0 +1,65 @@
+#!/usr/bin/env ruby
+require 'optparse'
+require 'open_api_import'
+
+options = {
+  name_for_module: :path
+}
+
+optparse = OptionParser.new do |opts|
+  opts.banner = "Usage: open_api_import [open_api_file] [options]\n"
+  opts.banner+= "Import a Swagger or Open API file and create a Ruby Request Hash file including all requests and responses.\n"
+  opts.banner+= "More info: https://github.com/MarioRuiz/open_api_import\n\n"
+  opts.banner+= "In case no options supplied: \n"
+  opts.banner+= "  * It will be used the value of operation_id on snake_case for the name of the methods\n"
+  opts.banner+= "  * It will be used the first folder of the path to create the module name\n"
+  
+  opts.on("-n", "--no_responses", "if you don't want to add the examples of responses in the resultant file.") do
+    options[:include_responses] = false
+  end
+
+  opts.on("-m", "--mock", "Add the first response on the request as mock_response") do
+    options[:mock_response] = true
+  end
+
+  opts.on("-p", "--path_method", "it will be used the path and http method to create the method names") do
+    options[:create_method_name] = :path
+  end
+
+  opts.on("-o", "--operationId_method", "It will be used the operationId field like it is to create the method names") do
+    options[:create_method_name] = :operationId
+  end
+
+  opts.on("-f", "--create_files", "It will create a file per module") do
+    options[:create_files] = true
+  end
+
+  opts.on("-T", "--tags_module", "It will be used the tags key to create the module name") do
+    options[:name_for_module] = :tags
+  end
+
+  opts.on("-F", "--fixed_module", "all the requests will be under the module Requests") do
+    options[:name_for_module] = :fixed
+  end
+
+
+end
+
+optparse.parse!
+
+if options.key?(:create_files)
+  if options[:name_for_module] == :path
+    options[:name_for_module] = :path_file
+  elsif options[:name_for_module] == :tags
+    options[:name_for_module] = :tags_file
+  end
+  options.delete(:create_files)
+end
+
+filename = ARGV.pop
+if filename.to_s==''
+  puts optparse
+  puts "** Need to specify at least a file to import."
+else
+  OpenApiImport.from filename, options
+end

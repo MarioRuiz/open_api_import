@@ -17,7 +17,7 @@ class OpenApiImport
   #   path: it will be used the path and http method, for example for a GET on path: /users/list, the method name will be get_users_list
   #   operation_id: it will be used the operationId field but using the snake_case version, for example for listUsers: list_users
   #   operationId: it will be used the operationId field like it is, for example: listUsers
-  # @param name_for_module [Symbol]. (:path, :path_file, :fixed) (default: :path). How the module names will be created.
+  # @param name_for_module [Symbol]. (:path, :path_file, :fixed, :tags, :tags_file) (default: :path). How the module names will be created.
   #   path: It will be used the first folder of the path to create the module name, for example the path /users/list will be in the module Users and all the requests from all modules in the same file.
   #   path_file: It will be used the first folder of the path to create the module name, for example the path /users/list will be in the module Users and each module will be in a new requests file.
   #   tags: It will be used the tags key to create the module name, for example the tags: [users,list] will create the module UsersList and all the requests from all modules in the same file.
@@ -443,7 +443,11 @@ class OpenApiImport
         puts message
         @logger.info message
       else
-        files[module_requests] = output #for the last one
+        unless files.key?(module_requests)
+          files[module_requests] = Array.new
+        end
+        files[module_requests].concat(output) #for the last one
+
         requires_txt = ""
         message = "** Generated files that contain the code of the requests after importing the Swagger file: "
         puts message
