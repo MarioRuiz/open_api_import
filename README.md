@@ -8,8 +8,6 @@ Import a Swagger or Open API file and create a Ruby Request Hash file including 
 
 The Request Hash will include also the pattern (regular expressions) of the fields,  parameters, default values...
 
-On this first preliminary version we only fully support Open API v2. Open API v3 is not fully supported yet.
-
 The output of this gem will be following the specification of Request Hashes: https://github.com/MarioRuiz/Request-Hash
 
 The Request Hashes generated will be able to be used with any Ruby Http Client and it is adapted even better with nice_http gem: https://github.com/MarioRuiz/nice_http

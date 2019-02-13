@@ -60,10 +60,6 @@ class OpenApiImport
       end
       if raw[:swagger].to_f < 2.0
         raise "Unsupported Swagger version. Only versions >= 2.0 are valid."
-      elsif raw[:swagger].to_f >= 3.0
-        message = "Take in consideration Open API #{raw[:swagger]} is not fully supported for the moment while we are in preliminary version of open_api_import."
-        warn message
-        @logger.warn message
       end
 
       base_host = ""
@@ -228,10 +224,26 @@ class OpenApiImport
 
               end
             end
+            # todo: for open api 3.0 add the new Link feature: https://swagger.io/docs/specification/links/
+            # todo: for open api 3.0 is not getting the required params in all cases
 
-            # todo: for open api 3.0 is not getting the required params
+            # for the case open api 3 with cont.requestBody.content.'applicatin/json'.schema
+            # example: petstore-expanded.yaml operationId=addPet
+            if cont.key?(:requestBody) and cont[:requestBody].key?(:content) and 
+              cont[:requestBody][:content].key?(:'application/json') and cont[:requestBody][:content][:'application/json'].key?(:schema)
+              cont[:parameters] = [] unless cont.key?(:parameters)
+              cont[:parameters] << {in: 'body', schema: cont[:requestBody][:content][:'application/json'][:schema] }
+            end
+
             if cont.key?(:parameters) && cont[:parameters].is_a?(Array)
               cont[:parameters].each do |p|
+                if p.keys.include?(:schema) and p[:schema].include?(:type)
+                  type = p[:schema][:type]
+                elsif p.keys.include?(:type)
+                  type = p[:type]
+                else
+                  type = ""
+                end
                 if p[:in] == "path"
                   if create_method_name == :operationId
                     param_name = p[:name]
@@ -242,19 +254,13 @@ class OpenApiImport
                   end
                   params_path << param_name
                   #params_required << param_name if p[:required].to_s=="true"
-
-                  if p.keys.include?(:description)
-                    description_parameters << "#    #{p[:name]}: (#{p[:type]}) #{"(required)" if p[:required].to_s=="true"} #{p[:description]}"
-                  end
+                  description_parameters << "#    #{p[:name]}: (#{type}) #{"(required)" if p[:required].to_s=="true"} #{p[:description]}"
                 elsif p[:in] == "query"
                   params_query << p[:name]
                   params_required << p[:name] if p[:required].to_s=="true"
-                  if p.keys.include?(:description)
-                    description_parameters << "#    #{p[:name]}: (#{p[:type]}) #{"(required)" if p[:required].to_s=="true"} #{p[:description]}"
-                  end
+                  description_parameters << "#    #{p[:name]}: (#{type}) #{"(required)" if p[:required].to_s=="true"} #{p[:description]}"
                 elsif p[:in] == "body"
                   if p.keys.include?(:schema)
-                    #jal
                     if p[:schema].key?(:oneOf)
                       bodies = p[:schema][:oneOf]
                     elsif p[:schema].key?(:anyOf)
@@ -556,7 +562,14 @@ class OpenApiImport
     private def get_response_examples(v)
       # TODO: take in consideration the case allOf, oneOf... schema.items.allOf[0].properties schema.items.allOf[1].properties
       # example on https://github.com/OAI/OpenAPI-Specification/blob/master/examples/v2.0/yaml/petstore-expanded.yaml
+      v=v.dup
       response_example = Array.new()
+      # for open api 3.0 with responses schema inside content
+      if v.key?(:content) && v[:content].is_a?(Hash) && v[:content].key?(:'application/json') &&
+        v[:content][:'application/json'].key?(:schema)
+        v=v[:content][:'application/json'].dup
+      end
+
       if v.key?(:examples) && v[:examples].is_a?(Hash) && v[:examples].key?(:'application/json')
         if v[:examples][:'application/json'].is_a?(String)
           response_example << v[:examples][:'application/json']
@@ -574,6 +587,36 @@ class OpenApiImport
             response_example << (exs + ", ")
           end
           response_example << "]"
+        end
+      # for open api 3.0. examples on reponses, for example: api-with-examples.yaml
+      elsif v.key?(:content) && v[:content].is_a?(Hash) && v[:content].key?(:'application/json') &&
+        v[:content][:'application/json'].key?(:examples)
+        v[:content][:'application/json'][:examples].each do |tk, tv|
+          #todo: for the moment we only take in consideration the first example of response. 
+          # we need to decide how to manage to do it correctly
+          if tv.key?(:value)
+            tresp = tv[:value]
+          else
+            tresp = ""
+          end
+          if tresp.is_a?(String)
+            response_example << tresp
+          elsif tresp.is_a?(Hash)
+            exs = tresp.to_s
+            exs.gsub!(/:(\w+)=>/, "\n\\1: ")
+            response_example << exs
+          elsif tresp.is_a?(Array)
+            response_example << "["
+            tresp.each do |ex|
+              exs = ex.to_s
+              if ex.is_a?(Hash)
+                exs.gsub!(/:(\w+)=>/, "\n\\1: ")
+              end
+              response_example << (exs + ", ")
+            end
+            response_example << "]"
+          end
+          break #only the first one it is considered
         end
       elsif v.key?(:schema) && v[:schema].is_a?(Hash) &&
             (v[:schema].key?(:properties) ||
