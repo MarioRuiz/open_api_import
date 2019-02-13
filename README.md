@@ -68,7 +68,7 @@ Example:
  open_api_import ./spec/fixtures/v2.0/yaml/uber.yaml -fp
 ```
 
-This is the output:
+This is the output of `open_api_import -h`:
 
 ```
 Usage: open_api_import [open_api_file] [options]
