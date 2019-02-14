@@ -52,7 +52,18 @@ class OpenApiImport
       File.delete(file_errors) if File.exist?(file_errors)
       import_errors = ""
 
-      definition = OasParser::Definition.resolve(swagger_file)
+      begin
+        definition = OasParser::Definition.resolve(swagger_file)
+      rescue Exception => stack
+        message = "There was a problem parsing the Open Api document using the oas_parser gem. The execution was aborted.\n"
+        message += "Visit the github for oas_parser gem for bugs and more info: https://github.com/Nexmo/oas_parser\n"
+        message += "Error: #{stack.message}"
+        puts message
+        @logger.fatal message
+        @logger.fatal stack.backtrace
+        exit!
+      end
+
       raw = definition.raw.deep_symbolize_keys
 
       if raw.key?(:openapi) && (raw[:openapi].to_f > 0)
