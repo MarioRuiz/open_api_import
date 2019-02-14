@@ -214,6 +214,8 @@ class OpenApiImport
                 response_example = []
 
                 response_example = get_response_examples(v)
+                v[:description] = v[:description].to_s.gsub("'", %q(\\\'))
+                
                 
                 if !response_example.empty?
                   responses << "'#{k}': { "
