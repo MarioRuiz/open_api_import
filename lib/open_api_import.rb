@@ -418,6 +418,22 @@ class OpenApiImport
             end
 
             unless data_examples.empty?
+              unless data_required.empty?
+                reqdata = []
+                data_examples[0].each do |edata|
+                  data_required.each do |rdata|
+                    if edata.scan(/^#{rdata}:/).size>0 or edata.scan(/:/).size==0
+                      reqdata << edata
+                    end
+                  end
+                end
+                unless reqdata.empty?
+                  output << "data: {"
+                  output << reqdata.join(", \n")
+                  output << "},"
+                end
+              end
+
               output << "data_examples: ["
               data_examples.each do |data|
                 output << "{"
