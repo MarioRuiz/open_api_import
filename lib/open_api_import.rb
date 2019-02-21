@@ -295,7 +295,7 @@ class OpenApiImport
                       if body.keys.include?(:properties) and body[:properties].size > 0
                         body[:properties].each { |dpk, dpv|
                           if dpv.keys.include?(:example)
-                            valv = dpv[:example]
+                            valv = dpv[:example].to_s
                           else
                             if dpv.type == "object"
                               valv = "{}"
@@ -543,7 +543,7 @@ class OpenApiImport
           val[:type]='object'
         end
         if val.key?(:example)
-          example << if val[:example].is_a?(String)
+          example << if val[:example].is_a?(String) or val[:example].is_a?(Time)
             " #{prop.to_sym}: \"#{val[:example]}\", "
           else
             " #{prop.to_sym}: #{val[:example]}, "
