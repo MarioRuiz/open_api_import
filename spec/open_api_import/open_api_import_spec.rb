@@ -204,6 +204,19 @@ RSpec.describe OpenApiImport do
             expect(req.key?(:method)).to eq true
             expect(req[:method]).to eq :get
         end
+
+        it 'detects version on method_name and add it to module' do
+            file_name = './spec/fixtures/v3.0/petstore_with_version.yaml'
+            OpenApiImport.from file_name
+            expect(File.read("#{file_name}.rb")).to match /module\sV1Pets/
+        end
+
+        it 'detects version on method_name and remove it' do
+            file_name = './spec/fixtures/v3.0/petstore_with_version.yaml'
+            OpenApiImport.from file_name
+            expect(File.read("#{file_name}.rb")).to match /def\sself\.list_pets/
+        end
+
     end
 
 

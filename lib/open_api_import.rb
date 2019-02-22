@@ -177,6 +177,13 @@ class OpenApiImport
                   module_requests = "Unknown"
                 end
               end
+
+              # to remove from method_name: v1_list_regions and add it to module
+              if /^(?<vers>v\d+)/i =~ method_name
+                method_name.gsub!(/^#{vers}_?/,'')
+                module_requests = (vers.capitalize + module_requests).camel_case unless module_requests.start_with?(vers)
+              end
+
               if old_module_requests != module_requests
                 output << "end" unless old_module_requests == "" or name_for_module == :path_file or name_for_module == :tags_file
                 if name_for_module == :path or name_for_module == :tags
