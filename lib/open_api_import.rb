@@ -254,7 +254,7 @@ class OpenApiImport
               cont[:parameters] = [] unless cont.key?(:parameters)
               cont[:parameters] << {in: 'body', schema: cont[:requestBody][:content][:'application/json'][:schema] }
             end
-
+            data_examples_all_of = false
             if cont.key?(:parameters) && cont[:parameters].is_a?(Array)
               cont[:parameters].each do |p|
                 if p.keys.include?(:schema) and p[:schema].include?(:type)
@@ -280,13 +280,14 @@ class OpenApiImport
                   params_required << p[:name] if p[:required].to_s=="true"
                   description_parameters << "#    #{p[:name]}: (#{type}) #{"(required)" if p[:required].to_s=="true"} #{p[:description]}"
                 elsif p[:in] == "body"
+
                   if p.keys.include?(:schema)
                     if p[:schema].key?(:oneOf)
                       bodies = p[:schema][:oneOf]
                     elsif p[:schema].key?(:anyOf)
                       bodies = p[:schema][:anyOf]
                     elsif p[:schema].key?(:allOf)
-                      bodies = p[:schema][:allOf]
+                      data_examples_all_of, bodies = get_data_all_of_bodies(p)
                     else
                       bodies = [p[:schema]]
                     end
@@ -300,13 +301,25 @@ class OpenApiImport
                       end
 
                       if body.keys.include?(:properties) and body[:properties].size > 0
+                        
                         body[:properties].each { |dpk, dpv|
                           if dpv.keys.include?(:example)
                             valv = dpv[:example].to_s
                           else
                             if dpv.type == "object"
-                              valv = "{}"
-                            else  
+                              if dpv.key?(:properties)
+                                valv = get_examples(dpv[:properties]).join("\n")
+                              else
+                                valv = "{}"
+                              end
+                            elsif dpv.type == 'array'
+                              if dpv.key?(:items)
+                                valv = get_examples({dpk => dpv}, :only_value)
+                                valv = valv.join("\n")
+                              else
+                                valv = "[]"
+                              end
+                            else
                               valv = ""
                             end
                           end
@@ -338,7 +351,11 @@ class OpenApiImport
                           params_data << "#{dpk}: #{valv}"
                         }
                         if params_data.size > 0
-                          data_examples << params_data
+                          if data_examples_all_of == true and data_examples.size > 0
+                            data_examples[0]+=params_data
+                          else
+                            data_examples << params_data
+                          end
                           params_data = []
                         end
                       end
@@ -541,10 +558,10 @@ class OpenApiImport
 
   class << self
     # Retrieve the examples from the properties hash
-    private def get_examples(properties)
+    private def get_examples(properties, type=:key_value)
       #todo: consider using this method also to get data examples
       example = []
-      example << "{" unless properties.empty?
+      example << "{" unless properties.empty? or type==:only_value
       properties.each do |prop, val|
         if val.key?(:properties) and !val.key?(:example) and !val.key?(:type)
           val[:type]='object'
@@ -566,15 +583,31 @@ class OpenApiImport
           when "boolean"
             example << " #{prop.to_sym}: true, "
           when "array"
+            if val.key?(:items) and val[:items].size==1 and val[:items].is_a?(Hash) and val[:items].key?(:type)
+              val[:items][:enum]=[val[:items][:type]]
+            end
+
             if val.key?(:items) and val[:items].key?(:enum)
-              if val[:items][:enum][0].is_a?(String)
-                example << " #{prop.to_sym}: \"" + val[:items][:enum].sample + "\", "
+              if type==:only_value
+                if val[:items][:enum][0].is_a?(String)
+                  example << " [\"" + val[:items][:enum].sample + "\"] "
+                else
+                  example << " [" + val[:items][:enum].sample + "] "
+                end
               else
-                example << " #{prop.to_sym}: " + val[:items][:enum].sample + ", "
+                if val[:items][:enum][0].is_a?(String)
+                  example << " #{prop.to_sym}: [\"" + val[:items][:enum].sample + "\"], "
+                else
+                  example << " #{prop.to_sym}: [" + val[:items][:enum].sample + "], "
+                end
               end
             else
               #todo: differ between response examples and data examples
-              example << " #{prop.to_sym}: " + get_response_examples({schema: val}).join("\n") + ", "
+              if type == :only_value
+                example << get_response_examples({schema: val}).join("\n")
+              else
+                example << " #{prop.to_sym}: " + get_response_examples({schema: val}).join("\n") + ", "
+              end
             end
           when "object"
             #todo: differ between response examples and data examples
@@ -590,7 +623,7 @@ class OpenApiImport
           end
         end
       end
-      example << "}" unless properties.empty?
+      example << "}" unless properties.empty? or type==:only_value
       example
     end
 
@@ -690,6 +723,29 @@ class OpenApiImport
         response_example << "[\"#{v[:schema][:items][:type]}\"]"
       end
       return response_example
+    end
+
+
+    private def get_data_all_of_bodies(p)
+      bodies = []
+      data_examples_all_of = false
+      if p.is_a?(Array)
+        q = p
+      elsif p.key?(:schema) and p[:schema].key?(:allOf)
+        q = p[:schema][:allOf]
+      else
+        q =[p]
+      end
+      q.each do |pt|
+        if pt.is_a?(Hash) and pt.key?(:allOf)
+          #bodies += pt[:allOf]
+          bodies += get_data_all_of_bodies(pt[:allOf])[1]
+          data_examples_all_of = true
+        else
+          bodies << pt
+        end
+      end
+      return data_examples_all_of, bodies
     end
   end
 end
