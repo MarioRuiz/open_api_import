@@ -44,6 +44,28 @@ This is an example of a generated request hash:
 
 ```
 
+If you want to automatically generate RSpec tests for every end point of your Swagger file, use the create_tests gem: https://github.com/MarioRuiz/create_tests
+
+```ruby
+require 'create_tests'
+  
+CreateTests.from "./requests/uber.yaml.rb"
+```
+
+This is the output of the previous run:
+
+```
+- Logs: ./requests/uber.yaml.rb_create_tests.log
+** Pay attention, if any of the test files exist or the help file exist only will be added the tests, methods that are missing.
+- Settings: ./settings/general.rb
+- Test created: ./spec/User/profile_user_spec.rb
+- Test created: ./spec/User/activity_user_spec.rb
+- Test created: ./spec/Products/list_products_spec.rb
+- Test created: ./spec/Estimates/price_estimates_spec.rb
+- Test created: ./spec/Estimates/time_estimates_spec.rb
+- Helper: ./spec/helper.rb
+```
+
 ## Installation
 
 Install it yourself as:
