@@ -109,8 +109,8 @@ class OpenApiImport
           raw.each do |met, cont|
             if met != :parameters
               if raw[met].key?(:parameters)
-                #todo: check if in some cases the parameters on the method can be added to the ones in the path
-                #raw[met][:parameters] = raw[met][:parameters] & raw[:parameters]
+                #in case parameters for all methods in path is present
+                raw[met][:parameters] = raw[met][:parameters] + raw[:parameters]
               else
                 raw[met][:parameters] = raw[:parameters]
               end
@@ -136,7 +136,6 @@ class OpenApiImport
 
             # for the case operationId is missing
             cont[:operationId] = "unknown" unless cont.key?(:operationId)
-
             if create_method_name == :path
               method_name = (met.to_s + "_" + path.path.to_s).snake_case
               method_name.chop! if method_name[-1] == "_"
