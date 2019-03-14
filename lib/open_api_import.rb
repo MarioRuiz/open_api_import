@@ -376,7 +376,6 @@ class OpenApiImport
                       path_txt += "#{pr}=\#{#{pr.to_s.snake_case}}&"
                       params << "#{pr.to_s.snake_case}"
                     end
-                      
                   end
                 end
                 params_query.each do |pq|
@@ -413,6 +412,8 @@ class OpenApiImport
             output << "def self.#{method_name} (#{params.join(", ")})"
 
             output << "{"
+
+            output << "name: \"#{module_requests}.#{method_name}\","
 
             output << "path: \"#{base_path}#{path_txt}\","
 

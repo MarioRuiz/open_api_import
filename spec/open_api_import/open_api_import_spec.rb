@@ -205,6 +205,18 @@ RSpec.describe OpenApiImport do
             expect(req[:method]).to eq :get
         end
 
+        it 'adds name key on request hash' do
+            file_name = './spec/fixtures/v2.0/yaml/petstore-simple.yaml'
+            File.delete("#{file_name}.rb") if File.exist?("#{file_name}.rb")
+            OpenApiImport.from file_name, create_method_name: :operation_id
+            expect(File.exist?("#{file_name}.rb")).to eq true
+            content = File.read("#{file_name}.rb")
+            eval(content)
+            req = Swagger::SwaggerPetstore::V1_0_0::Root.find_pets
+            expect(req.key?(:name)).to eq true
+            expect(req[:name]).to eq "Root.find_pets"
+        end
+
         it 'detects version on method_name and add it to module' do
             file_name = './spec/fixtures/v3.0/petstore_with_version.yaml'
             OpenApiImport.from file_name
