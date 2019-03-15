@@ -307,7 +307,7 @@ class OpenApiImport
                           else
                             if dpv.type == "object"
                               if dpv.key?(:properties)
-                                valv = get_examples(dpv[:properties]).join("\n")
+                                valv = get_examples(dpv[:properties], :key_value, true).join("\n")
                               else
                                 valv = "{}"
                               end
@@ -558,68 +558,70 @@ class OpenApiImport
 
   class << self
     # Retrieve the examples from the properties hash
-    private def get_examples(properties, type=:key_value)
+    private def get_examples(properties, type=:key_value, remove_read_only=false)
       #todo: consider using this method also to get data examples
       example = []
       example << "{" unless properties.empty? or type==:only_value
       properties.each do |prop, val|
-        if val.key?(:properties) and !val.key?(:example) and !val.key?(:type)
-          val[:type]='object'
-        end
-        if val.key?(:example)
-          example << if val[:example].is_a?(String) or val[:example].is_a?(Time)
-            " #{prop.to_sym}: \"#{val[:example]}\", "
-          else
-            " #{prop.to_sym}: #{val[:example]}, "
+        unless remove_read_only and val.key?(:readOnly) and val[:readOnly]==true
+          if val.key?(:properties) and !val.key?(:example) and !val.key?(:type)
+            val[:type]='object'
           end
-        elsif val.key?(:type)
-          format = val[:format]
-          format = val[:type] if format.to_s == ""
-          case val[:type].downcase
-          when "string"
-            example << " #{prop.to_sym}: \"#{format}\", "
-          when "integer", "number"
-            example << " #{prop.to_sym}: 0, "
-          when "boolean"
-            example << " #{prop.to_sym}: true, "
-          when "array"
-            if val.key?(:items) and val[:items].size==1 and val[:items].is_a?(Hash) and val[:items].key?(:type)
-              val[:items][:enum]=[val[:items][:type]]
+          if val.key?(:example)
+            example << if val[:example].is_a?(String) or val[:example].is_a?(Time)
+              " #{prop.to_sym}: \"#{val[:example]}\", "
+            else
+              " #{prop.to_sym}: #{val[:example]}, "
             end
+          elsif val.key?(:type)
+            format = val[:format]
+            format = val[:type] if format.to_s == ""
+            case val[:type].downcase
+            when "string"
+              example << " #{prop.to_sym}: \"#{format}\", "
+            when "integer", "number"
+              example << " #{prop.to_sym}: 0, "
+            when "boolean"
+              example << " #{prop.to_sym}: true, "
+            when "array"
+              if val.key?(:items) and val[:items].size==1 and val[:items].is_a?(Hash) and val[:items].key?(:type)
+                val[:items][:enum]=[val[:items][:type]]
+              end
 
-            if val.key?(:items) and val[:items].key?(:enum)
-              if type==:only_value
-                if val[:items][:enum][0].is_a?(String)
-                  example << " [\"" + val[:items][:enum].sample + "\"] "
+              if val.key?(:items) and val[:items].key?(:enum)
+                if type==:only_value
+                  if val[:items][:enum][0].is_a?(String)
+                    example << " [\"" + val[:items][:enum].sample + "\"] "
+                  else
+                    example << " [" + val[:items][:enum].sample + "] "
+                  end
                 else
-                  example << " [" + val[:items][:enum].sample + "] "
+                  if val[:items][:enum][0].is_a?(String)
+                    example << " #{prop.to_sym}: [\"" + val[:items][:enum].sample + "\"], "
+                  else
+                    example << " #{prop.to_sym}: [" + val[:items][:enum].sample + "], "
+                  end
                 end
               else
-                if val[:items][:enum][0].is_a?(String)
-                  example << " #{prop.to_sym}: [\"" + val[:items][:enum].sample + "\"], "
+                #todo: differ between response examples and data examples
+                if type == :only_value
+                  example << get_response_examples({schema: val}).join("\n")
                 else
-                  example << " #{prop.to_sym}: [" + val[:items][:enum].sample + "], "
+                  example << " #{prop.to_sym}: " + get_response_examples({schema: val}).join("\n") + ", "
                 end
               end
-            else
+            when "object"
               #todo: differ between response examples and data examples
-              if type == :only_value
-                example << get_response_examples({schema: val}).join("\n")
+              res_ex = get_response_examples({schema: val})
+              if res_ex.size == 0
+                res_ex = "{ }"
               else
-                example << " #{prop.to_sym}: " + get_response_examples({schema: val}).join("\n") + ", "
+                res_ex = res_ex.join("\n")
               end
-            end
-          when "object"
-            #todo: differ between response examples and data examples
-            res_ex = get_response_examples({schema: val})
-            if res_ex.size == 0
-              res_ex = "{ }"
+              example << " #{prop.to_sym}: " + res_ex + ", "
             else
-              res_ex = res_ex.join("\n")
+              example << " #{prop.to_sym}: \"#{format}\", "
             end
-            example << " #{prop.to_sym}: " + res_ex + ", "
-          else
-            example << " #{prop.to_sym}: \"#{format}\", "
           end
         end
       end
