@@ -153,7 +153,6 @@ class OpenApiImport
                 method_name = cont[:operationId]
               end
             end
-
             path_txt = path.path.dup.to_s
             if [:path, :path_file, :tags, :tags_file].include?(name_for_module)
               old_module_requests = module_requests
@@ -457,6 +456,27 @@ class OpenApiImport
                   output << "},"
                 end
               end
+              unless data_read_only.empty? or !data_required.empty?
+                reqdata = []
+                #remove read only fields from :data
+                data_examples[0].each do |edata|
+                  read_only = false
+                  data_read_only.each do |rdata|
+                    if edata.scan(/^#{rdata}:/).size>0
+                      read_only = true
+                      break
+                    elsif edata.scan(/:/).size==0
+                      break
+                    end
+                  end
+                  reqdata << edata unless read_only
+                end
+                unless reqdata.empty?
+                  output << "data: {"
+                  output << reqdata.join(", \n")
+                  output << "},"
+                end
+              end
 
               output << "data_examples: ["
               data_examples.each do |data|
@@ -558,12 +578,12 @@ class OpenApiImport
 
   class << self
     # Retrieve the examples from the properties hash
-    private def get_examples(properties, type=:key_value, remove_read_only=false)
+    private def get_examples(properties, type=:key_value, remove_readonly=false)
       #todo: consider using this method also to get data examples
       example = []
       example << "{" unless properties.empty? or type==:only_value
       properties.each do |prop, val|
-        unless remove_read_only and val.key?(:readOnly) and val[:readOnly]==true
+        unless remove_readonly and val.key?(:readOnly) and val[:readOnly]==true
           if val.key?(:properties) and !val.key?(:example) and !val.key?(:type)
             val[:type]='object'
           end
