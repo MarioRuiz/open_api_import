@@ -294,8 +294,8 @@ class OpenApiImport
 
                     bodies.each do |body|
                       if body.keys.include?(:required) and body[:required].size > 0
-                        output << "# required data: #{body[:required].join(", ")}"
-                        data_required += body[:required]
+                        data_required += get_required_data(body)
+                        output << "# required data: #{data_required.inspect}"
                       end
 
                       if body.keys.include?(:properties) and body[:properties].size > 0
@@ -420,7 +420,7 @@ class OpenApiImport
 
             unless data_required.empty?
               output << "data_required: ["
-              output << ":#{data_required.uniq.join(", :")}"
+              output << ":#{data_required.uniq.join(", :")}".gsub(':{','{')
               output << "],"
             end
             unless data_read_only.empty?
@@ -443,17 +443,16 @@ class OpenApiImport
             unless data_examples.empty?
               unless data_required.empty?
                 reqdata = []
-                data_examples[0].each do |edata|
-                  data_required.each do |rdata|
-                    if edata.scan(/^#{rdata}:/).size>0 or edata.scan(/:/).size==0
-                      reqdata << edata
-                    end
+                  begin
+                    data_ex = eval("{#{data_examples[0].join(", ")}}") 
+                  rescue 
+                    data_ex = {}
                   end
-                end
+                  reqdata = filter(data_ex, data_required)
                 unless reqdata.empty?
-                  output << "data: {"
-                  output << reqdata.join(", \n")
-                  output << "},"
+                  phsd = pretty_hash_symbolized(reqdata)
+                  phsd[0]="data: {"
+                  output += phsd
                 end
               end
               unless data_read_only.empty? or !data_required.empty?
@@ -768,6 +767,61 @@ class OpenApiImport
         end
       end
       return data_examples_all_of, bodies
+    end
+    
+    # Get required data
+    private def get_required_data(body)
+      data_required = []
+      if body.keys.include?(:required) and body[:required].size > 0
+        body[:required].each do |r|
+          data_required << r.to_sym
+        end
+      end
+      data_required.each do |key|
+        if body.key?(:properties) and body[:properties][key].is_a?(Hash) and 
+          body[:properties][key].key?(:required) and body[:properties][key][:required].size>0
+            dr = get_required_data(body[:properties][key])
+            dr.each do |k|
+              data_required.push({key => k})
+            end
+        end
+      end
+      return data_required
+    end
+
+    #filter hash
+    private def filter(hash, keys)
+      result = {}
+      keys = [keys] unless keys.is_a?(Array)
+      keys.each do |k|
+        if k.is_a?(Symbol) and hash.key?(k)
+          if hash[k].is_a?(Hash)
+            result[k] = {}
+          else
+            result[k] = hash[k] 
+          end
+        elsif k.is_a?(Hash) and hash.key?(k.keys[0])
+          result[k.keys[0]][k.values[0]] = filter(hash[k.keys[0]], k.values[0]).values[0]
+        end
+      end
+      return result
+    end
+
+    #gen pretty hash symbolized
+    private def pretty_hash_symbolized(hash)
+      output = []
+      output << "{"
+      hash.each do |kr,kv|
+        if kv.kind_of?(Hash)
+          restv = pretty_hash_symbolized(kv)
+          restv[0] = "#{kr}: {"
+          output += restv
+        else
+          output << "#{kr}: #{kv.inspect}, "
+        end
+      end
+      output << "},"
+      return output
     end
   end
 end
