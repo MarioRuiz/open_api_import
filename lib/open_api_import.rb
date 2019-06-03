@@ -325,7 +325,12 @@ class OpenApiImport
                             description_parameters << "#    #{dpk}: (#{dpv[:type]}) #{dpv[:description]}"
                           end
                           if dpv.keys.include?(:pattern)
-                            data_pattern << "#{dpk}: /#{dpv[:pattern].to_s.gsub("\\/", "\/")}/"
+                            #todo: control better the cases with back slashes
+                            if dpv[:pattern].include?('\\/')
+                              data_pattern << "#{dpk}: //"
+                            else
+                              data_pattern << "#{dpk}: /#{dpv[:pattern].to_s.gsub("\\/", "\/")}/"
+                            end
                           end
                           if dpv.keys.include?(:readOnly) and dpv[:readOnly] == true
                             data_read_only << dpk
