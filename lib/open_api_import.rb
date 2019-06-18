@@ -286,6 +286,7 @@ class OpenApiImport
                       bodies = p[:schema][:anyOf]
                     elsif p[:schema].key?(:allOf)
                       data_examples_all_of, bodies = get_data_all_of_bodies(p)
+                      data_examples_all_of = true # because we are on data and allOf already
                     else
                       bodies = [p[:schema]]
                     end
