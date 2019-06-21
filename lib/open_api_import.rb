@@ -217,10 +217,9 @@ class OpenApiImport
             if include_responses && cont.key?(:responses) && cont[:responses].is_a?(Hash)
               cont[:responses].each do |k, v|
                 response_example = []
-
                 response_example = get_response_examples(v)
+                data_pattern += get_patterns(k, v[:schema]) if v.key?(:schema)
                 v[:description] = v[:description].to_s.gsub("'", %q(\\\'))
-                
                 
                 if !response_example.empty?
                   responses << "'#{k}': { "
@@ -325,14 +324,9 @@ class OpenApiImport
                           if dpv.keys.include?(:description)
                             description_parameters << "#    #{dpk}: (#{dpv[:type]}) #{dpv[:description]}"
                           end
-                          if dpv.keys.include?(:pattern)
-                            #todo: control better the cases with back slashes
-                            if dpv[:pattern].include?('\\/')
-                              data_pattern << "#{dpk}: //"
-                            else
-                              data_pattern << "#{dpk}: /#{dpv[:pattern].to_s.gsub("\\/", "\/")}/"
-                            end
-                          end
+
+                          data_pattern += get_patterns(dpk,dpv)
+
                           if dpv.keys.include?(:readOnly) and dpv[:readOnly] == true
                             data_read_only << dpk
                           end
@@ -793,6 +787,58 @@ class OpenApiImport
         end
       end
       return data_required
+    end
+
+    # Get patterns
+    private def get_patterns(dpk, dpv)
+      data_pattern = []
+
+      if dpv.keys.include?(:pattern)
+        #todo: control better the cases with back slashes
+        if dpv[:pattern].include?('\\/')
+          data_pattern << "#{dpk}: //"
+        else
+          data_pattern << "#{dpk}: /#{dpv[:pattern].to_s.gsub("\\/", "\/")}/"
+        end
+      elsif dpv.key?(:minLength) and dpv.key?(:maxLength)
+        data_pattern << "#{dpk}: :'#{dpv[:minLength]}-#{dpv[:maxLength]}:TN'"
+      elsif dpv.key?(:minLength) and !dpv.key?(:maxLength)
+        data_pattern << "#{dpk}: :'#{dpv[:minLength]}:TN'"
+      elsif !dpv.key?(:minLength) and dpv.key?(:maxLength)
+        data_pattern << "#{dpk}: :'0-#{dpv[:maxLength]}:TN'"
+      elsif dpv.key?(:minimum) and dpv.key?(:maximum) and dpv[:type]=='string'
+        data_pattern << "#{dpk}: :'#{dpv[:minimum]}-#{dpv[:maximum]}:TN'"
+      elsif dpv.key?(:minimum) and dpv.key?(:maximum)
+        data_pattern << "#{dpk}: #{dpv[:minimum]}..#{dpv[:maximum]}"
+      elsif dpv.key?(:minimum) and !dpv.key?(:maximum)
+        if RUBY_VERSION >= '2.6.0'
+          data_pattern << "#{dpk}: #{dpv[:minimum]}.."
+        else
+          data_pattern << "##{dpk}: #{dpv[:minimum]}.. # INFINITE only working on ruby>=2.6.0"
+        end
+      elsif !dpv.key?(:minimum) and dpv.key?(:maximum)
+        data_pattern << "#{dpk}: 0..#{dpv[:maximum]}"
+      elsif dpv.key?(:enum)
+        data_pattern << "#{dpk}: :'#{dpv[:enum].join('|')}'"
+      elsif dpv[:format] == 'date-time'
+        data_pattern << "#{dpk}: DateTime"
+      elsif dpv[:type] == 'boolean'
+        data_pattern << "#{dpk}: Boolean"
+      elsif dpv[:type] == 'array' and dpv.key?(:items) and dpv[:items].is_a?(Hash) and dpv[:items].key?(:enum) and dpv[:items][:enum].is_a?(Array)
+        #{:title=>"Balala", :type=>"array", :items=>{:type=>"string", :enum=>["uno","dos"], :example=>"uno"}}
+        data_pattern << "#{dpk}: [:'#{dpv[:items][:enum].join('|')}']"
+      elsif dpv[:type] == 'array' and dpv.key?(:items) and dpv[:items].is_a?(Hash) and !dpv[:items].key?(:enum) and dpv[:items].key?(:properties)
+        #{:title=>"Balala", :type=>"array", :items=>{title: 'xxxx, properties: {server: {enum:['ibm','msa','pytan']}}}
+        dpv[:items][:properties].each do |dpkk,dpvv|
+          data_pattern += get_patterns(dpkk,dpvv)
+        end
+      elsif dpv[:type] == 'object' and dpv.key?(:properties)
+        dpv[:properties].each do |dpkk,dpvv|
+          data_pattern += get_patterns(dpkk,dpvv)
+        end
+      end
+      return data_pattern
+
     end
 
     #filter hash
