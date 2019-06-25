@@ -218,6 +218,7 @@ class OpenApiImport
               cont[:responses].each do |k, v|
                 response_example = []
                 response_example = get_response_examples(v)
+    
                 data_pattern += get_patterns(k, v[:schema]) if v.key?(:schema)
                 v[:description] = v[:description].to_s.gsub("'", %q(\\\'))
                 
@@ -586,6 +587,9 @@ class OpenApiImport
           if val.key?(:properties) and !val.key?(:example) and !val.key?(:type)
             val[:type]='object'
           end
+          if val.key?(:items) and !val.key?(:example) and !val.key?(:type)
+            val[:type]='array'
+          end
           if val.key?(:example)
             example << if val[:example].is_a?(String) or val[:example].is_a?(Time)
               " #{prop.to_sym}: \"#{val[:example]}\", "
@@ -739,6 +743,7 @@ class OpenApiImport
             response_example << "]"
           end
         end
+
       elsif v.key?(:schema) and v[:schema].key?(:items) and v[:schema][:items].key?(:type)
         # for the case only type supplied but nothing else for the array
         response_example << "[\"#{v[:schema][:items][:type]}\"]"
