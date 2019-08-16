@@ -748,6 +748,12 @@ class OpenApiImport
         # for the case only type supplied but nothing else for the array
         response_example << "[\"#{v[:schema][:items][:type]}\"]"
       end
+      response_example.each do |rs|
+        #(@type Google) for the case in example the key is something like: @type: 
+        if rs.match?(/^\s*@\w+:/)
+          rs.gsub!(/@(\w+):/,"'@\1':")
+        end
+      end
       return response_example
     end
 
