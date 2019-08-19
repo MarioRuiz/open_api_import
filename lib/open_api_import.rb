@@ -813,13 +813,13 @@ class OpenApiImport
           data_pattern << "#{dpk}: /#{dpv[:pattern].to_s}/"
         end
       elsif dpv.key?(:minLength) and dpv.key?(:maxLength)
-        data_pattern << "#{dpk}: :'#{dpv[:minLength]}-#{dpv[:maxLength]}:TN'"
+        data_pattern << "#{dpk}: :'#{dpv[:minLength]}-#{dpv[:maxLength]}:LN$'"
       elsif dpv.key?(:minLength) and !dpv.key?(:maxLength)
-        data_pattern << "#{dpk}: :'#{dpv[:minLength]}:TN'"
+        data_pattern << "#{dpk}: :'#{dpv[:minLength]}:LN$'"
       elsif !dpv.key?(:minLength) and dpv.key?(:maxLength)
-        data_pattern << "#{dpk}: :'0-#{dpv[:maxLength]}:TN'"
+        data_pattern << "#{dpk}: :'0-#{dpv[:maxLength]}:LN$'"
       elsif dpv.key?(:minimum) and dpv.key?(:maximum) and dpv[:type]=='string'
-        data_pattern << "#{dpk}: :'#{dpv[:minimum]}-#{dpv[:maximum]}:TN'"
+        data_pattern << "#{dpk}: :'#{dpv[:minimum]}-#{dpv[:maximum]}:LN$'"
       elsif dpv.key?(:minimum) and dpv.key?(:maximum)
         data_pattern << "#{dpk}: #{dpv[:minimum]}..#{dpv[:maximum]}"
       elsif dpv.key?(:minimum) and !dpv.key?(:maximum)
