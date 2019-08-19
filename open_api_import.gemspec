@@ -17,7 +17,7 @@ Gem::Specification.new do |s|
   s.test_files    = s.files.grep(%r{^(test|spec|features)/})
   s.require_paths = ["lib"]
   s.executables << 'open_api_import'
-  s.required_ruby_version = '>= 2.3'
+  s.required_ruby_version = '>= 2.4'
   s.post_install_message = "Thanks for installing! Visit us on https://github.com/MarioRuiz/open_api_import"
 end
 
