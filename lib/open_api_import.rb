@@ -751,7 +751,7 @@ class OpenApiImport
       response_example.each do |rs|
         #(@type Google) for the case in example the key is something like: @type: 
         if rs.match?(/^\s*@\w+:/)
-          rs.gsub!(/@(\w+):/,"'@\1':")
+          rs.gsub!(/@(\w+):/,'\'@\1\':')
         end
       end
       return response_example
