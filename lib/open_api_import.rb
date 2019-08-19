@@ -806,10 +806,11 @@ class OpenApiImport
 
       if dpv.keys.include?(:pattern)
         #todo: control better the cases with back slashes
-        if dpv[:pattern].include?('\\/')
-          data_pattern << "#{dpk}: //"
+        if dpv[:pattern].include?('\\\\/')
+          #for cases like this: ^[^\.\\/:*?"<>|][^\\/:*?"<>|]{0,13}[^\.\\/:*?"<>|]?$
+          data_pattern << "#{dpk}: /#{dpv[:pattern].to_s.gsub('\/','/')}/"
         else
-          data_pattern << "#{dpk}: /#{dpv[:pattern].to_s.gsub("\\/", "\/")}/"
+          data_pattern << "#{dpk}: /#{dpv[:pattern].to_s}/"
         end
       elsif dpv.key?(:minLength) and dpv.key?(:maxLength)
         data_pattern << "#{dpk}: :'#{dpv[:minLength]}-#{dpv[:maxLength]}:TN'"
