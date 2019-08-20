@@ -172,7 +172,7 @@ class OpenApiImport
                 if cont.key?(:tags) and cont[:tags].is_a?(Array) and cont[:tags].size>0
                   module_requests = cont[:tags].join(" ").camel_case
                 else
-                  module_requests = "Unknown"
+                  module_requests = "Undefined"
                 end
               end
 
