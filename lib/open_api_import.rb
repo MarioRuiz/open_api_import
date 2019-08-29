@@ -127,6 +127,7 @@ class OpenApiImport
             params_query = []
             params_required = []
             description_parameters = []
+            data_form = []
             data_required = []
             data_read_only = []
             data_default = []
@@ -135,7 +136,7 @@ class OpenApiImport
             responses = []
 
             # for the case operationId is missing
-            cont[:operationId] = "unknown" unless cont.key?(:operationId)
+            cont[:operationId] = "undefined" unless cont.key?(:operationId)
             if create_method_name == :path
               method_name = (met.to_s + "_" + path.path.to_s).snake_case
               method_name.chop! if method_name[-1] == "_"
@@ -277,8 +278,22 @@ class OpenApiImport
                   params_query << p[:name]
                   params_required << p[:name] if p[:required].to_s=="true"
                   description_parameters << "#    #{p[:name]}: (#{type}) #{"(required)" if p[:required].to_s=="true"} #{p[:description]}"
+                elsif p[:in] == "formData" or p[:in] == "formdata" #jal
+                  description_parameters << "#    #{p[:name]}: (#{p[:type]}) #{p[:description]}"
+                  case p[:type]
+                  when /^string$/i
+                    data_form << "#{p[:name]}: ''"
+                  when /^boolean$/i
+                    data_form << "#{p[:name]}: true"
+                  when /^number$/i
+                    data_form << "#{p[:name]}: 0"
+                  when /^integer$/i
+                    data_form << "#{p[:name]}: 0"
+                  else
+                    puts "! on formData not supported type #{p[:type]}"
+                  end
+        
                 elsif p[:in] == "body"
-
                   if p.keys.include?(:schema)
                     if p[:schema].key?(:oneOf)
                       bodies = p[:schema][:oneOf]
@@ -360,6 +375,10 @@ class OpenApiImport
                       end
                     end
                   end
+                elsif p[:in]=="header"
+                  #todo: see how we can treat those cases
+                else
+                  puts "! not imported data with :in:#{p[:in]} => #{p.inspect}" #Jal 
                 end
               end
 
@@ -439,6 +458,10 @@ class OpenApiImport
               output << "data_pattern: {"
               output << data_pattern.uniq.join(", \n")
               output << "},"
+            end
+
+            unless data_form.empty?
+              data_examples << data_form
             end
 
             unless data_examples.empty?
@@ -830,12 +853,12 @@ class OpenApiImport
         end
       elsif !dpv.key?(:minimum) and dpv.key?(:maximum)
         data_pattern << "#{dpk}: 0..#{dpv[:maximum]}"
-      elsif dpv.key?(:enum)
-        data_pattern << "#{dpk}: :'#{dpv[:enum].join('|')}'"
       elsif dpv[:format] == 'date-time'
         data_pattern << "#{dpk}: DateTime"
       elsif dpv[:type] == 'boolean'
         data_pattern << "#{dpk}: Boolean"
+      elsif dpv.key?(:enum)
+        data_pattern << "#{dpk}: :'#{dpv[:enum].join('|')}'"
       elsif dpv[:type] == 'array' and dpv.key?(:items) and dpv[:items].is_a?(Hash) and dpv[:items].key?(:enum) and dpv[:items][:enum].is_a?(Array)
         #{:title=>"Balala", :type=>"array", :items=>{:type=>"string", :enum=>["uno","dos"], :example=>"uno"}}
         data_pattern << "#{dpk}: [:'#{dpv[:items][:enum].join('|')}']"
