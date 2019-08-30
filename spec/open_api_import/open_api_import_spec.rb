@@ -143,12 +143,12 @@ RSpec.describe OpenApiImport do
             expect(File.read("#{file_name}.rb")).to include("def self.findPets(")
         end
 
-        it 'creates the name of the method using the default "unknown" when no operationId supplied' do
+        it 'creates the name of the method using the default "undefined" when no operationId supplied' do
             file_name = './spec/fixtures/v2.0/yaml/petstore-minimal.yaml'
             File.delete("#{file_name}.rb") if File.exist?("#{file_name}.rb")
             OpenApiImport.from file_name, create_method_name: :operation_id
             expect(File.exist?("#{file_name}.rb")).to eq true
-            expect(File.read("#{file_name}.rb")).to include("def self.unknown(")
+            expect(File.read("#{file_name}.rb")).to include("def self.undefined(")
         end
 
         it 'creates all end points and http methods' do
@@ -187,7 +187,7 @@ RSpec.describe OpenApiImport do
             OpenApiImport.from file_name, create_method_name: :operation_id
             expect(File.exist?("#{file_name}.rb")).to eq true
             content = File.read("#{file_name}.rb")
-            expect(content).to include('# operationId: unknown, method: get')
+            expect(content).to include('# operationId: undefined, method: get')
             expect(content).to include('# summary: Price Estimates')
             expect(content).to include('The Price Estimates endpoint returns an estimated price')
             expect(content).to include('latitude: (number) (required) Latitude component of location.')
