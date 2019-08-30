@@ -220,7 +220,8 @@ class OpenApiImport
                 response_example = []
                 response_example = get_response_examples(v)
     
-                data_pattern += get_patterns(k, v[:schema]) if v.key?(:schema)
+                data_pattern += get_patterns('', v[:schema]) if v.key?(:schema)
+                data_pattern.uniq!
                 v[:description] = v[:description].to_s.gsub("'", %q(\\\'))
                 
                 if !response_example.empty?
@@ -278,7 +279,11 @@ class OpenApiImport
                   params_query << p[:name]
                   params_required << p[:name] if p[:required].to_s=="true"
                   description_parameters << "#    #{p[:name]}: (#{type}) #{"(required)" if p[:required].to_s=="true"} #{p[:description]}"
-                elsif p[:in] == "formData" or p[:in] == "formdata" #jal
+                elsif p[:in] == "formData" or p[:in] == "formdata"
+                  #todo: take in consideration: default, required
+                  #todo: see if we should add the required as params to the method and not required as options
+                  #todo: set on data the required fields with the values from args
+
                   description_parameters << "#    #{p[:name]}: (#{p[:type]}) #{p[:description]}"
                   case p[:type]
                   when /^string$/i
@@ -342,6 +347,7 @@ class OpenApiImport
                           end
 
                           data_pattern += get_patterns(dpk,dpv)
+                          data_pattern.uniq!
 
                           if dpv.keys.include?(:readOnly) and dpv[:readOnly] == true
                             data_read_only << dpk
@@ -378,7 +384,7 @@ class OpenApiImport
                 elsif p[:in]=="header"
                   #todo: see how we can treat those cases
                 else
-                  puts "! not imported data with :in:#{p[:in]} => #{p.inspect}" #Jal 
+                  puts "! not imported data with :in:#{p[:in]} => #{p.inspect}"
                 end
               end
 
@@ -831,47 +837,56 @@ class OpenApiImport
         #todo: control better the cases with back slashes
         if dpv[:pattern].include?('\\\\/')
           #for cases like this: ^[^\.\\/:*?"<>|][^\\/:*?"<>|]{0,13}[^\.\\/:*?"<>|]?$
-          data_pattern << "#{dpk}: /#{dpv[:pattern].to_s.gsub('\/','/')}/"
+          data_pattern << "'#{dpk}': /#{dpv[:pattern].to_s.gsub('\/','/')}/"
         else
-          data_pattern << "#{dpk}: /#{dpv[:pattern].to_s}/"
+          data_pattern << "'#{dpk}': /#{dpv[:pattern].to_s}/"
         end
       elsif dpv.key?(:minLength) and dpv.key?(:maxLength)
-        data_pattern << "#{dpk}: :'#{dpv[:minLength]}-#{dpv[:maxLength]}:LN$'"
+        data_pattern << "'#{dpk}': :'#{dpv[:minLength]}-#{dpv[:maxLength]}:LN$'"
       elsif dpv.key?(:minLength) and !dpv.key?(:maxLength)
-        data_pattern << "#{dpk}: :'#{dpv[:minLength]}:LN$'"
+        data_pattern << "'#{dpk}': :'#{dpv[:minLength]}:LN$'"
       elsif !dpv.key?(:minLength) and dpv.key?(:maxLength)
-        data_pattern << "#{dpk}: :'0-#{dpv[:maxLength]}:LN$'"
+        data_pattern << "'#{dpk}': :'0-#{dpv[:maxLength]}:LN$'"
       elsif dpv.key?(:minimum) and dpv.key?(:maximum) and dpv[:type]=='string'
-        data_pattern << "#{dpk}: :'#{dpv[:minimum]}-#{dpv[:maximum]}:LN$'"
+        data_pattern << "'#{dpk}': :'#{dpv[:minimum]}-#{dpv[:maximum]}:LN$'"
       elsif dpv.key?(:minimum) and dpv.key?(:maximum)
-        data_pattern << "#{dpk}: #{dpv[:minimum]}..#{dpv[:maximum]}"
+        data_pattern << "'#{dpk}': #{dpv[:minimum]}..#{dpv[:maximum]}"
       elsif dpv.key?(:minimum) and !dpv.key?(:maximum)
         if RUBY_VERSION >= '2.6.0'
-          data_pattern << "#{dpk}: #{dpv[:minimum]}.."
+          data_pattern << "'#{dpk}': #{dpv[:minimum]}.."
         else
-          data_pattern << "##{dpk}: #{dpv[:minimum]}.. # INFINITE only working on ruby>=2.6.0"
+          data_pattern << "#'#{dpk}': #{dpv[:minimum]}.. # INFINITE only working on ruby>=2.6.0"
         end
       elsif !dpv.key?(:minimum) and dpv.key?(:maximum)
-        data_pattern << "#{dpk}: 0..#{dpv[:maximum]}"
+        data_pattern << "'#{dpk}': 0..#{dpv[:maximum]}"
       elsif dpv[:format] == 'date-time'
-        data_pattern << "#{dpk}: DateTime"
+        data_pattern << "'#{dpk}': DateTime"
       elsif dpv[:type] == 'boolean'
-        data_pattern << "#{dpk}: Boolean"
+        data_pattern << "'#{dpk}': Boolean"
       elsif dpv.key?(:enum)
-        data_pattern << "#{dpk}: :'#{dpv[:enum].join('|')}'"
+        data_pattern << "'#{dpk}': :'#{dpv[:enum].join('|')}'"
       elsif dpv[:type] == 'array' and dpv.key?(:items) and dpv[:items].is_a?(Hash) and dpv[:items].key?(:enum) and dpv[:items][:enum].is_a?(Array)
         #{:title=>"Balala", :type=>"array", :items=>{:type=>"string", :enum=>["uno","dos"], :example=>"uno"}}
-        data_pattern << "#{dpk}: [:'#{dpv[:items][:enum].join('|')}']"
+        data_pattern << "'#{dpk}': [:'#{dpv[:items][:enum].join('|')}']"
       elsif dpv[:type] == 'array' and dpv.key?(:items) and dpv[:items].is_a?(Hash) and !dpv[:items].key?(:enum) and dpv[:items].key?(:properties)
         #{:title=>"Balala", :type=>"array", :items=>{title: 'xxxx, properties: {server: {enum:['ibm','msa','pytan']}}}
         dpv[:items][:properties].each do |dpkk,dpvv|
-          data_pattern += get_patterns(dpkk,dpvv)
+          if dpk == ''
+            data_pattern += get_patterns("#{dpkk}",dpvv)
+          else
+            data_pattern += get_patterns("#{dpk}.#{dpkk}",dpvv)
+          end
         end
       elsif dpv[:type] == 'object' and dpv.key?(:properties)
         dpv[:properties].each do |dpkk,dpvv|
-          data_pattern += get_patterns(dpkk,dpvv)
+          if dpk == ''
+            data_pattern += get_patterns("#{dpkk}",dpvv)
+          else
+            data_pattern += get_patterns("#{dpk}.#{dpkk}",dpvv)
+          end
         end
       end
+      data_pattern.uniq!
       return data_pattern
 
     end
