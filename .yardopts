@@ -2,4 +2,11 @@
 --title 'open_api_import - OpenApiImport -- Import a swagger or Open API file and create a Ruby Request Hash file including all requests and responses'
 --charset utf-8
 --markup markdown
-'lib/*.rb' - '*.md' - 'LICENSE'
+--exclude features
+--no-private
+--default-return void
+
+lib/*.rb
+lib/open_api_import/*.rb
+-
+LICENSE

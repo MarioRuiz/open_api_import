@@ -7,21 +7,21 @@ require "logger"
 
 class OpenApiImport
   ##############################################################################################
-  # Import a Swagger or Open API file and create a Ruby Request Hash file including all requests and responses.
+  # Import a Swagger or Open API file and create a Ruby Request Hash file including all requests and responses.  
   # The http methods that will be treated are: 'get','post','put','delete', 'patch'.
   # @param swagger_file [String]. Path and file name. Could be absolute or relative to project root folder.
   # @param include_responses [Boolean]. (default: true) if you want to add the examples of responses in the resultant file.
-  # @param mock_response [Boolean]. (default:false) Add the first response on the request as mock_response to be used.
+  # @param mock_response [Boolean]. (default:false) Add the first response on the request as mock_response to be used.  
   #   In case using nice_http gem: if NiceHttp.use_mocks = true will use it instead of getting the real response from the WS.
-  # @param create_method_name [Symbol]. (:path, :operation_id, :operationId) (default: operation_id). How the name of the methods will be generated.
-  #   path: it will be used the path and http method, for example for a GET on path: /users/list, the method name will be get_users_list
-  #   operation_id: it will be used the operationId field but using the snake_case version, for example for listUsers: list_users
+  # @param create_method_name [Symbol]. (:path, :operation_id, :operationId) (default: operation_id). How the name of the methods will be generated.  
+  #   path: it will be used the path and http method, for example for a GET on path: /users/list, the method name will be get_users_list  
+  #   operation_id: it will be used the operationId field but using the snake_case version, for example for listUsers: list_users  
   #   operationId: it will be used the operationId field like it is, for example: listUsers
-  # @param name_for_module [Symbol]. (:path, :path_file, :fixed, :tags, :tags_file) (default: :path). How the module names will be created.
-  #   path: It will be used the first folder of the path to create the module name, for example the path /users/list will be in the module Users and all the requests from all modules in the same file.
-  #   path_file: It will be used the first folder of the path to create the module name, for example the path /users/list will be in the module Users and each module will be in a new requests file.
-  #   tags: It will be used the tags key to create the module name, for example the tags: [users,list] will create the module UsersList and all the requests from all modules in the same file.
-  #   tags_file: It will be used the tags key to create the module name, for example the tags: [users,list] will create the module UsersList and and each module will be in a new requests file.
+  # @param name_for_module [Symbol]. (:path, :path_file, :fixed, :tags, :tags_file) (default: :path). How the module names will be created.  
+  #   path: It will be used the first folder of the path to create the module name, for example the path /users/list will be in the module Users and all the requests from all modules in the same file.  
+  #   path_file: It will be used the first folder of the path to create the module name, for example the path /users/list will be in the module Users and each module will be in a new requests file.  
+  #   tags: It will be used the tags key to create the module name, for example the tags: [users,list] will create the module UsersList and all the requests from all modules in the same file.  
+  #   tags_file: It will be used the tags key to create the module name, for example the tags: [users,list] will create the module UsersList and and each module will be in a new requests file.  
   #   fixed: all the requests will be under the module Requests
   ##############################################################################################
   def self.from(swagger_file, create_method_name: :operation_id, include_responses: true, mock_response: false, name_for_module: :path)
@@ -29,6 +29,7 @@ class OpenApiImport
       f = File.new("#{swagger_file}_open_api_import.log", "w")
       f.sync = true
       @logger = Logger.new f
+      puts "Logs file: #{swagger_file}_open_api_import.log"
     rescue StandardError => e
       warn "Not possible to create the Logger file"
       warn e
@@ -126,9 +127,11 @@ class OpenApiImport
             params_path = []
             params_query = []
             params_required = []
+            params_data = []
             description_parameters = []
             data_form = []
             data_required = []
+            #todo: add nested one.true.three to data_read_only
             data_read_only = []
             data_default = []
             data_examples = []
@@ -137,6 +140,7 @@ class OpenApiImport
 
             # for the case operationId is missing
             cont[:operationId] = "undefined" unless cont.key?(:operationId)
+      
             if create_method_name == :path
               method_name = (met.to_s + "_" + path.path.to_s).snake_case
               method_name.chop! if method_name[-1] == "_"
@@ -415,6 +419,7 @@ class OpenApiImport
                   end
                 end
               end
+
             end
 
             if description_parameters.size > 0
@@ -433,7 +438,7 @@ class OpenApiImport
               paramst.concat params
               params = paramst
             end
-            
+
             output << "def self.#{method_name} (#{params.join(", ")})"
 
             output << "{"
@@ -446,12 +451,12 @@ class OpenApiImport
 
             unless data_required.empty?
               output << "data_required: ["
-              output << ":#{data_required.uniq.join(", :")}".gsub(':{','{')
+              output << ":'#{data_required.uniq.join("', :'")}'"
               output << "],"
             end
             unless data_read_only.empty?
               output << "data_read_only: ["
-              output << ":#{data_read_only.uniq.join(", :")}"
+              output << ":'#{data_read_only.uniq.join("', :'")}'"
               output << "],"
             end
             unless data_default.empty?
@@ -478,7 +483,11 @@ class OpenApiImport
                   rescue 
                     data_ex = {}
                   end
-                  reqdata = filter(data_ex, data_required)
+                  if (data_required.grep(/\./)).empty?
+                    reqdata = filter(data_ex, data_required) #not nested
+                  else
+                    reqdata = filter(data_ex, data_required, true) #nested
+                  end
                 unless reqdata.empty?
                   phsd = pretty_hash_symbolized(reqdata)
                   phsd[0]="data: {"
@@ -546,10 +555,12 @@ class OpenApiImport
         output_txt = output.join("\n")
         requests_file_path = file_to_convert + ".rb"
         File.open(requests_file_path, "w") { |file| file.write(output_txt) }
-        `rufo #{requests_file_path}`
+        res_rufo = `rufo #{requests_file_path}`
         message = "** Requests file: #{swagger_file}.rb that contains the code of the requests after importing the Swagger file"
         puts message
         @logger.info message
+        @logger.error "       Error formating with rufo" unless res_rufo.to_s.match?(/\AFormat:.+$\s*\z/)
+        @logger.error "       Syntax Error: #{`ruby -c #{requests_file_path}`}" unless `ruby -c #{requests_file_path}`.include?("Syntax OK")
       else
         unless files.key?(module_requests)
           files[module_requests] = Array.new
@@ -566,19 +577,23 @@ class OpenApiImport
           requests_file_path = file_to_convert + "_" + mod + ".rb"
           requires_txt += "require_relative '#{File.basename(swagger_file)}_#{mod}'\n"
           File.open(requests_file_path, "w") { |file| file.write(output_txt) }
-          `rufo #{requests_file_path}`
+          res_rufo = `rufo #{requests_file_path}`
           message = "  - #{requests_file_path}"
           puts message
           @logger.info message
-        end
+          @logger.error "       Error formating with rufo" unless res_rufo.to_s.match?(/\AFormat:.+$\s*\z/)
+          @logger.error "       Syntax Error: #{`ruby -c #{requests_file_path}`}" unless `ruby -c #{requests_file_path}`.include?("Syntax OK")
+            end
 
         requests_file_path = file_to_convert + ".rb"
         File.open(requests_file_path, "w") { |file| file.write(requires_txt) }
-        `rufo #{requests_file_path}`
+        res_rufo = `rufo #{requests_file_path}`
         message = "** File that contains all the requires for all Request files: \n"
         message += "   - #{requests_file_path} "
         puts message
         @logger.info message
+        @logger.error "       Error formating with rufo" unless res_rufo.to_s.match?(/\AFormat:.+$\s*\z/)
+        @logger.error "       Syntax Error: #{`ruby -c #{requests_file_path}`}" unless `ruby -c #{requests_file_path}`.include?("Syntax OK")
       end
 
       begin
@@ -822,7 +837,7 @@ class OpenApiImport
           body[:properties][key].key?(:required) and body[:properties][key][:required].size>0
             dr = get_required_data(body[:properties][key])
             dr.each do |k|
-              data_required.push({key => k})
+              data_required.push("#{key}.#{k}".to_sym)
             end
         end
       end
@@ -892,19 +907,28 @@ class OpenApiImport
     end
 
     #filter hash
-    private def filter(hash, keys)
+    def filter(hash, keys, nested = false)
       result = {}
       keys = [keys] unless keys.is_a?(Array)
-      keys.each do |k|
-        if k.is_a?(Symbol) and hash.key?(k)
-          if hash[k].is_a?(Hash)
-            result[k] = {}
-          else
-            result[k] = hash[k] 
+      if nested 
+        result = hash.nice_filter(keys)
+      else
+          #to be backwards compatible
+          keys.each do |k|
+          if k.is_a?(Symbol) and hash.key?(k)
+              if hash[k].is_a?(Hash)
+                result[k] = {}
+              else
+                result[k] = hash[k] 
+              end
+          elsif k.is_a?(Symbol) and k.to_s.include?('.') and hash.key?((k.to_s.scan(/(\w+)\./).join).to_sym) #nested 'uno.dos.tres
+              kn = k.to_s.split('.')
+              vn = kn[1].to_sym
+              result[kn.first.to_sym][vn] = filter(hash[kn.first.to_sym], vn).values[0]
+          elsif k.is_a?(Hash) and hash.key?(k.keys[0]) #nested {uno: {dos: :tres}}
+              result[k.keys[0]][k.values[0]] = filter(hash[k.keys[0]], k.values[0]).values[0]
           end
-        elsif k.is_a?(Hash) and hash.key?(k.keys[0])
-          result[k.keys[0]][k.values[0]] = filter(hash[k.keys[0]], k.values[0]).values[0]
-        end
+          end
       end
       return result
     end
