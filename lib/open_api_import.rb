@@ -24,7 +24,7 @@ class OpenApiImport
   #   tags_file: It will be used the tags key to create the module name, for example the tags: [users,list] will create the module UsersList and and each module will be in a new requests file.  
   #   fixed: all the requests will be under the module Requests
   ##############################################################################################
-  def self.from(swagger_file, create_method_name: :operation_id, include_responses: true, mock_response: false, name_for_module: :path)
+  def self.from(swagger_file, create_method_name: :operation_id, include_responses: true, mock_response: false, name_for_module: :path, silent: false)
     begin
       f = File.new("#{swagger_file}_open_api_import.log", "w")
       f.sync = true
@@ -140,7 +140,7 @@ class OpenApiImport
 
             # for the case operationId is missing
             cont[:operationId] = "undefined" unless cont.key?(:operationId)
-      
+
             if create_method_name == :path
               method_name = (met.to_s + "_" + path.path.to_s).snake_case
               method_name.chop! if method_name[-1] == "_"
@@ -276,9 +276,11 @@ class OpenApiImport
                     param_name = p[:name].to_s.snake_case
                     path_txt.gsub!("{#{p[:name]}}", "\#{#{param_name}}")
                   end
-                  params_path << param_name
-                  #params_required << param_name if p[:required].to_s=="true"
-                  description_parameters << "#    #{p[:name]}: (#{type}) #{"(required)" if p[:required].to_s=="true"} #{p[:description]}"
+                  unless params_path.include?(param_name)
+                    params_path << param_name
+                    #params_required << param_name if p[:required].to_s=="true"
+                    description_parameters << "#    #{p[:name]}: (#{type}) #{"(required)" if p[:required].to_s=="true"} #{p[:description]}"
+                  end
                 elsif p[:in] == "query"
                   params_query << p[:name]
                   params_required << p[:name] if p[:required].to_s=="true"
