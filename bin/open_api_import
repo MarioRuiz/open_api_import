@@ -42,6 +42,10 @@ optparse = OptionParser.new do |opts|
     options[:name_for_module] = :fixed
   end
 
+  opts.on("-s", "--silent", "It will display only errors") do
+    options[:name_for_module] = :fixed
+  end
+
 
 end
 

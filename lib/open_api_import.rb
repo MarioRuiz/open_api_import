@@ -18,6 +18,7 @@ class OpenApiImport
   #   operation_id: it will be used the operationId field but using the snake_case version, for example for listUsers: list_users  
   #   operationId: it will be used the operationId field like it is, for example: listUsers
   # @param name_for_module [Symbol]. (:path, :path_file, :fixed, :tags, :tags_file) (default: :path). How the module names will be created.  
+  # @param silent [Boolean]. (default: false) It will display only errors.
   #   path: It will be used the first folder of the path to create the module name, for example the path /users/list will be in the module Users and all the requests from all modules in the same file.  
   #   path_file: It will be used the first folder of the path to create the module name, for example the path /users/list will be in the module Users and each module will be in a new requests file.  
   #   tags: It will be used the tags key to create the module name, for example the tags: [users,list] will create the module UsersList and all the requests from all modules in the same file.  
@@ -29,7 +30,7 @@ class OpenApiImport
       f = File.new("#{swagger_file}_open_api_import.log", "w")
       f.sync = true
       @logger = Logger.new f
-      puts "Logs file: #{swagger_file}_open_api_import.log"
+      puts "Logs file: #{swagger_file}_open_api_import.log" unless silent
     rescue StandardError => e
       warn "Not possible to create the Logger file"
       warn e
@@ -559,7 +560,7 @@ class OpenApiImport
         File.open(requests_file_path, "w") { |file| file.write(output_txt) }
         res_rufo = `rufo #{requests_file_path}`
         message = "** Requests file: #{swagger_file}.rb that contains the code of the requests after importing the Swagger file"
-        puts message
+        puts message unless silent
         @logger.info message
         @logger.error "       Error formating with rufo" unless res_rufo.to_s.match?(/\AFormat:.+$\s*\z/)
         @logger.error "       Syntax Error: #{`ruby -c #{requests_file_path}`}" unless `ruby -c #{requests_file_path}`.include?("Syntax OK")
@@ -571,7 +572,7 @@ class OpenApiImport
 
         requires_txt = ""
         message = "** Generated files that contain the code of the requests after importing the Swagger file: "
-        puts message
+        puts message unless silent
         @logger.info message
         files.each do |mod, out_mod|
           output = output_header + out_mod + output_footer
@@ -581,7 +582,7 @@ class OpenApiImport
           File.open(requests_file_path, "w") { |file| file.write(output_txt) }
           res_rufo = `rufo #{requests_file_path}`
           message = "  - #{requests_file_path}"
-          puts message
+          puts message unless silent
           @logger.info message
           @logger.error "       Error formating with rufo" unless res_rufo.to_s.match?(/\AFormat:.+$\s*\z/)
           @logger.error "       Syntax Error: #{`ruby -c #{requests_file_path}`}" unless `ruby -c #{requests_file_path}`.include?("Syntax OK")
@@ -592,7 +593,7 @@ class OpenApiImport
         res_rufo = `rufo #{requests_file_path}`
         message = "** File that contains all the requires for all Request files: \n"
         message += "   - #{requests_file_path} "
-        puts message
+        puts message unless silent
         @logger.info message
         @logger.error "       Error formating with rufo" unless res_rufo.to_s.match?(/\AFormat:.+$\s*\z/)
         @logger.error "       Syntax Error: #{`ruby -c #{requests_file_path}`}" unless `ruby -c #{requests_file_path}`.include?("Syntax OK")

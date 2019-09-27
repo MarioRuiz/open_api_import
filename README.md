@@ -107,6 +107,7 @@ In case no options supplied:
     -f, --create_files               It will create a file per module
     -T, --tags_module                It will be used the tags key to create the module name
     -F, --fixed_module               all the requests will be under the module Requests
+    -s, --silent                     It will display only errors
 ```
 
 
