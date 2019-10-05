@@ -871,7 +871,7 @@ class OpenApiImport
         data_pattern << "'#{dpk}': #{dpv[:minimum]}..#{dpv[:maximum]}"
       elsif dpv.key?(:minimum) and !dpv.key?(:maximum)
         if RUBY_VERSION >= '2.6.0'
-          data_pattern << "'#{dpk}': #{dpv[:minimum]}.."
+          data_pattern << "#'#{dpk}': #{dpv[:minimum]}.. # Disabled until bug on rufo gem is fixed"
         else
           data_pattern << "#'#{dpk}': #{dpv[:minimum]}.. # INFINITE only working on ruby>=2.6.0"
         end
