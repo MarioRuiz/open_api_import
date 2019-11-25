@@ -367,7 +367,7 @@ class OpenApiImport
                             end
                           end
 
-                          if dpv[:type].downcase == "string"
+                          if dpv.key?(:type) and dpv[:type].downcase == "string"
                             valv = '"' + valv + '"'
                           else
                             #todo: consider check default and insert it
