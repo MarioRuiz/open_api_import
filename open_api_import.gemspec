@@ -10,8 +10,8 @@ Gem::Specification.new do |s|
   s.homepage    = 'https://github.com/MarioRuiz/open_api_import'
   s.license       = 'MIT'
   s.add_runtime_dependency 'oas_parser', '~> 0.22', '>= 0.22.2'
-  s.add_runtime_dependency 'rufo', '~> 0.7', '>= 0.7.0'
-  s.add_runtime_dependency 'nice_hash', '~> 1.15', '>= 1.15.3'
+  s.add_runtime_dependency 'rufo', '~> 0.11', '>= 0.11.0'
+  s.add_runtime_dependency 'nice_hash', '~> 1.15', '>= 1.15.4'
   s.add_development_dependency 'rspec', '~> 3.8', '>= 3.8.0'
   s.add_development_dependency 'coveralls', '~> 0.8', '>= 0.8.22'
   s.test_files    = s.files.grep(%r{^(test|spec|features)/})
