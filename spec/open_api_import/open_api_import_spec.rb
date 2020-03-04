@@ -229,6 +229,15 @@ RSpec.describe OpenApiImport do
             expect(File.read("#{file_name}.rb")).to match /def\sself\.list_pets/
         end
 
+        it 'adds constants if create_constants' do
+            file_name = './spec/fixtures/v2.0/yaml/uber.yaml'
+            File.delete("#{file_name}.rb") if File.exist?("#{file_name}.rb")
+            OpenApiImport.from file_name, create_method_name: :path, create_constants: true
+            expect(File.exist?("#{file_name}.rb")).to eq true
+            content = File.read("#{file_name}.rb")
+            expect(content).to include('def self.get_products(latitude: LATITUDE, longitude: LONGITUDE)')
+        end
+
     end
 
 

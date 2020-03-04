@@ -18,6 +18,7 @@ class OpenApiImport
   #   operation_id: it will be used the operationId field but using the snake_case version, for example for listUsers: list_users  
   #   operationId: it will be used the operationId field like it is, for example: listUsers
   # @param name_for_module [Symbol]. (:path, :path_file, :fixed, :tags, :tags_file) (default: :path). How the module names will be created.  
+  # @param create_constants [Boolean]. (default: false) For required arguments, it will create keyword arguments assigning by default a constant.
   # @param silent [Boolean]. (default: false) It will display only errors.
   #   path: It will be used the first folder of the path to create the module name, for example the path /users/list will be in the module Users and all the requests from all modules in the same file.  
   #   path_file: It will be used the first folder of the path to create the module name, for example the path /users/list will be in the module Users and each module will be in a new requests file.  
@@ -25,7 +26,7 @@ class OpenApiImport
   #   tags_file: It will be used the tags key to create the module name, for example the tags: [users,list] will create the module UsersList and and each module will be in a new requests file.  
   #   fixed: all the requests will be under the module Requests
   ##############################################################################################
-  def self.from(swagger_file, create_method_name: :operation_id, include_responses: true, mock_response: false, name_for_module: :path, silent: false)
+  def self.from(swagger_file, create_method_name: :operation_id, include_responses: true, mock_response: false, name_for_module: :path, silent: false, create_constants: false)
     begin
       f = File.new("#{swagger_file}_open_api_import.log", "w")
       f.sync = true
@@ -53,6 +54,7 @@ class OpenApiImport
       file_errors = file_to_convert + ".errors.log"
       File.delete(file_errors) if File.exist?(file_errors)
       import_errors = ""
+      required_constants = []
 
       begin
         definition = OasParser::Definition.resolve(swagger_file)
@@ -278,7 +280,12 @@ class OpenApiImport
                     path_txt.gsub!("{#{p[:name]}}", "\#{#{param_name}}")
                   end
                   unless params_path.include?(param_name)
-                    params_path << param_name
+                    if create_constants
+                      params_path << "#{param_name}: #{param_name.upcase}"
+                      required_constants << param_name.upcase
+                    else
+                      params_path << param_name
+                    end
                     #params_required << param_name if p[:required].to_s=="true"
                     description_parameters << "#    #{p[:name]}: (#{type}) #{"(required)" if p[:required].to_s=="true"} #{p[:description]}"
                   end
@@ -400,13 +407,27 @@ class OpenApiImport
               unless params_query.empty?
                 path_txt += "?"
                 params_required.each do |pr|
-                  if params_query.include?(pr)
-                    if create_method_name == :operationId
-                      path_txt += "#{pr}=\#{#{pr}}&"
-                      params << "#{pr}"
-                    else
-                      path_txt += "#{pr}=\#{#{pr.to_s.snake_case}}&"
-                      params << "#{pr.to_s.snake_case}"
+                  if create_constants
+                    if params_query.include?(pr)
+                      if create_method_name == :operationId
+                        path_txt += "#{pr}=\#{#{pr}}&"
+                        params << "#{pr}: #{pr.upcase}"
+                        required_constants << pr.upcase
+                      else
+                        path_txt += "#{pr}=\#{#{pr.to_s.snake_case}}&"
+                        params << "#{pr.to_s.snake_case}: #{pr.to_s.snake_case.upcase}"
+                        required_constants << pr.to_s.snake_case.upcase
+                      end
+                    end
+                  else
+                    if params_query.include?(pr)
+                      if create_method_name == :operationId
+                        path_txt += "#{pr}=\#{#{pr}}&"
+                        params << "#{pr}"
+                      else
+                        path_txt += "#{pr}=\#{#{pr.to_s.snake_case}}&"
+                        params << "#{pr.to_s.snake_case}"
+                      end
                     end
                   end
                 end
@@ -435,7 +456,12 @@ class OpenApiImport
               paramst = []
               prms = path_txt.scan(/[^#]{(\w+)}/)
               prms.each do |p|
-                paramst<<p[0].to_s.snake_case
+                #if create_constants
+                #  paramst<<"#{p[0].to_s.snake_case}: #{p[0].to_s.snake_case.upcase}"
+                #  required_constants << p[0].to_s.snake_case.upcase
+                #else
+                  paramst<<p[0].to_s.snake_case
+                #end
                 path_txt.gsub!("{#{p[0]}}", "\#{#{p[0].to_s.snake_case}}")
               end
               paramst.concat params
@@ -547,7 +573,6 @@ class OpenApiImport
           end
         end
       end
-
       output_footer = []
 
       output_footer << "end" unless (module_requests == "") && ([:path, :path_file, :tags, :tags_file].include?(name_for_module))
@@ -589,7 +614,18 @@ class OpenApiImport
             end
 
         requests_file_path = file_to_convert + ".rb"
-        File.open(requests_file_path, "w") { |file| file.write(requires_txt) }
+        if required_constants.size > 0
+          rconsts = "# Required constants\n"
+          required_constants.uniq!
+          required_constants.each do |rq|
+            rconsts += "#{rq} ||= ENV['#{rq}'] ||=''\n"
+          end
+          rconsts += "\n\n"
+        else
+          rconsts = ''
+        end
+
+        File.open(requests_file_path, "w") { |file| file.write(rconsts + requires_txt) }
         res_rufo = `rufo #{requests_file_path}`
         message = "** File that contains all the requires for all Request files: \n"
         message += "   - #{requests_file_path} "

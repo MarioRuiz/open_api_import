@@ -46,6 +46,10 @@ optparse = OptionParser.new do |opts|
     options[:silent] = true
   end
 
+  opts.on("-c", "--create_constants", "For required arguments, it will create keyword arguments assigning by default a constant.") do
+    options[:create_constants] = true
+  end
+
 
 end
 

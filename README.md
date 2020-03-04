@@ -12,6 +12,8 @@ The output of this gem will be following the specification of Request Hashes: ht
 
 The Request Hashes generated will be able to be used with any Ruby Http Client and it is adapted even better with nice_http gem: https://github.com/MarioRuiz/nice_http
 
+A beautiful way to access and use the generated files is by using *pry*: https://github.com/pry/pry
+
 To be able to generate random requests take a look at the documentation for nice_hash gem: https://github.com/MarioRuiz/nice_hash
 
 This is an example of a generated request hash: 
@@ -108,6 +110,7 @@ In case no options supplied:
     -T, --tags_module                It will be used the tags key to create the module name
     -F, --fixed_module               all the requests will be under the module Requests
     -s, --silent                     It will display only errors
+    -c, --create_constants           For required arguments, it will create keyword arguments assigning by default a constant.
 ```
 
 
@@ -485,6 +488,14 @@ It will include this on the output file:
             },
 ...
 ...
+```
+
+### create_constants
+
+The methods will be generated using keyword arguments and for required arguments, it will create keyword arguments assigning by default a constant.
+
+```ruby
+def self.get_products(latitude: LATITUDE, longitude: LONGITUDE)
 ```
 
 ## Contributing
