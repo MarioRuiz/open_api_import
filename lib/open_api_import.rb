@@ -467,7 +467,7 @@ class OpenApiImport
               paramst.concat params
               params = paramst
             end
-
+            params.uniq!
             output << "def self.#{method_name} (#{params.join(", ")})"
 
             output << "{"
