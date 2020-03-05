@@ -69,5 +69,5 @@ if filename.to_s==''
   puts optparse
   puts "** Need to specify at least a file to import."
 else
-  OpenApiImport.from filename, options
+  OpenApiImport.from filename, **options
 end
