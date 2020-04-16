@@ -337,7 +337,11 @@ class OpenApiImport
                         
                         body[:properties].each { |dpk, dpv|
                           if dpv.keys.include?(:example)
-                            valv = dpv[:example].to_s
+                            if dpv[:example].is_a?(Array) and dpv.type != 'array'
+                              valv = dpv[:example][0]
+                            else
+                              valv = dpv[:example].to_s
+                            end
                           else
                             if dpv.type == "object"
                               if dpv.key?(:properties)
@@ -384,6 +388,7 @@ class OpenApiImport
                           end
                           params_data << "#{dpk}: #{valv}"
                         }
+
                         if params_data.size > 0
                           if data_examples_all_of == true and data_examples.size > 0
                             data_examples[0]+=params_data
@@ -674,10 +679,14 @@ class OpenApiImport
             val[:type]='array'
           end
           if val.key?(:example)
-            example << if val[:example].is_a?(String) or val[:example].is_a?(Time)
-              " #{prop.to_sym}: \"#{val[:example]}\", "
+            if val[:example].is_a?(Array) and val.key?(:type) and val[:type]=='string'
+              example << " #{prop.to_sym}: \"#{val[:example][0]}\", " # only the first example
             else
-              " #{prop.to_sym}: #{val[:example]}, "
+              example << if val[:example].is_a?(String) or val[:example].is_a?(Time)
+                " #{prop.to_sym}: \"#{val[:example]}\", "
+              else
+                " #{prop.to_sym}: #{val[:example]}, "
+              end
             end
           elsif val.key?(:type)
             format = val[:format]
@@ -776,6 +785,7 @@ class OpenApiImport
           else
             tresp = ""
           end
+
           if tresp.is_a?(String)
             response_example << tresp
           elsif tresp.is_a?(Hash)
@@ -837,7 +847,6 @@ class OpenApiImport
           rs.gsub!(/@(\w+):/,'\'@\1\':')
         end
       end
-      
       return response_example
     end
 

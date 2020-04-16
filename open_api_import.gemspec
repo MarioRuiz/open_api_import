@@ -11,7 +11,7 @@ Gem::Specification.new do |s|
   s.license       = 'MIT'
   s.add_runtime_dependency 'oas_parser', '~> 0.24'
   s.add_runtime_dependency 'rufo', '~> 0.11'
-  s.add_runtime_dependency 'nice_hash', '~> 1.15', '>= 1.15.4'
+  s.add_runtime_dependency 'nice_hash', '~> 1.15'
   s.add_development_dependency 'rspec', '~> 3.8', '>= 3.8.0'
   s.add_development_dependency 'coveralls', '~> 0.8', '>= 0.8.22'
   s.test_files    = s.files.grep(%r{^(test|spec|features)/})
