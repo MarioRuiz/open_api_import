@@ -371,7 +371,9 @@ class OpenApiImport
                             data_read_only << dpk
                           end
                           if dpv.keys.include?(:default)
-                            if dpv.type != "string"
+                            if dpv[:default].nil?
+                              data_default << "#{dpk}: nil"
+                            elsif dpv.type != "string"
                               data_default << "#{dpk}: #{dpv[:default]}"
                             else
                               data_default << "#{dpk}: '#{dpv[:default]}'"
