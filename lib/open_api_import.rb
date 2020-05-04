@@ -150,6 +150,10 @@ class OpenApiImport
             elsif create_method_name == :operation_id
               if (name_for_module == :tags or name_for_module == :tags_file) and cont.key?(:tags) and cont[:tags].is_a?(Array) and cont[:tags].size>0
                 metnametmp = cont[:operationId].gsub(/^#{cont[:tags].join}[\s_]*/, '')
+                cont[:tags].join.split(' ').each do |tag|
+                  metnametmp.gsub!(/^#{tag}[\s_]*/i, '')
+                end
+                metnametmp = met if metnametmp == ''
               else
                 metnametmp = cont[:operationId]
               end
@@ -157,6 +161,10 @@ class OpenApiImport
             else
               if (name_for_module == :tags or name_for_module == :tags_file) and cont.key?(:tags) and cont[:tags].is_a?(Array) and cont[:tags].size>0
                 method_name = cont[:operationId].gsub(/^#{cont[:tags].join}[\s_]*/, '')
+                cont[:tags].join.split(' ').each do |tag|
+                  method_name.gsub!(/^#{tag}[\s_]*/i, '')
+                end
+                method_name = met if method_name == ''
               else
                 method_name = cont[:operationId]
               end
