@@ -906,7 +906,6 @@ class OpenApiImport
     # Get patterns
     private def get_patterns(dpk, dpv)
       data_pattern = []
-
       if dpv.keys.include?(:pattern)
         #todo: control better the cases with back slashes
         if dpv[:pattern].include?('\\\\/')
@@ -951,6 +950,10 @@ class OpenApiImport
             data_pattern += get_patterns("#{dpk}.#{dpkk}",dpvv)
           end
         end
+      elsif dpv[:type] == 'array' and dpv.key?(:items) and dpv[:items].is_a?(Hash) and 
+        !dpv[:items].key?(:enum) and !dpv[:items].key?(:properties) and dpv[:items].key?(:type)
+        #{:title=>"labels", :description=>"Labels specified for the file system", :type=>"array", :items=>{:type=>"string", :enum=>["string"]}}
+        data_pattern << "'#{dpk}': [ #{get_patterns('', dpv[:items]).join[4..-1]} ]"
       elsif dpv[:type] == 'object' and dpv.key?(:properties)
         dpv[:properties].each do |dpkk,dpvv|
           if dpk == ''
