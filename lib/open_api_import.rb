@@ -388,15 +388,17 @@ class OpenApiImport
                             end
                           end
 
-                          if dpv.key?(:type) and dpv[:type].downcase == "string"
-                            valv = '"' + valv + '"'
+                          #todo: consider check default and insert it
+                          if dpv.key?(:type)
+                            params_data << get_examples({dpk => dpv}, :only_value, true).join
+                            params_data[-1].chop!.chop! if params_data[-1].to_s[-2..-1]==', '
+                            params_data.pop if params_data[-1].match?(/^\s*$/im)
                           else
-                            #todo: consider check default and insert it
                             if valv.to_s == ""
                               valv = '"' + valv + '"'
                             end
+                            params_data << "#{dpk}: #{valv}"
                           end
-                          params_data << "#{dpk}: #{valv}"
                         }
 
                         if params_data.size > 0
@@ -730,14 +732,14 @@ class OpenApiImport
               else
                 #todo: differ between response examples and data examples
                 if type == :only_value
-                  example << get_response_examples({schema: val}).join("\n")
+                  example << get_response_examples({schema: val}, remove_readonly).join("\n")
                 else
-                  example << " #{prop.to_sym}: " + get_response_examples({schema: val}).join("\n") + ", "
+                  example << " #{prop.to_sym}: " + get_response_examples({schema: val}, remove_readonly).join("\n") + ", "
                 end
               end
             when "object"
               #todo: differ between response examples and data examples
-              res_ex = get_response_examples({schema: val})
+              res_ex = get_response_examples({schema: val}, remove_readonly)
               if res_ex.size == 0
                 res_ex = "{ }"
               else
@@ -755,7 +757,7 @@ class OpenApiImport
     end
 
     # Retrieve the response examples from the hash
-    private def get_response_examples(v)
+    private def get_response_examples(v, remove_readonly = false)
       # TODO: take in consideration the case allOf, oneOf... schema.items.allOf[0].properties schema.items.allOf[1].properties
       # example on https://github.com/OAI/OpenAPI-Specification/blob/master/examples/v2.0/yaml/petstore-expanded.yaml
       v=v.dup
@@ -765,7 +767,6 @@ class OpenApiImport
         v[:content][:'application/json'].key?(:schema)
         v=v[:content][:'application/json'].dup
       end
-
       if v.key?(:examples) && v[:examples].is_a?(Hash) && v[:examples].key?(:'application/json')
         if v[:examples][:'application/json'].is_a?(String)
           response_example << v[:examples][:'application/json']
@@ -817,9 +818,9 @@ class OpenApiImport
         end
       elsif v.key?(:schema) && v[:schema].is_a?(Hash) &&
             (v[:schema].key?(:properties) ||
-             (v[:schema].key?(:items) && v[:schema][:items].key?(:properties)) ||
-             (v[:schema].key?(:items) && v[:schema][:items].key?(:allOf)) ||
-             v[:schema].key?(:allOf))
+            (v[:schema].key?(:items) && v[:schema][:items].key?(:properties)) ||
+            (v[:schema].key?(:items) && v[:schema][:items].key?(:allOf)) ||
+            v[:schema].key?(:allOf))
         properties = {}
         if v[:schema].key?(:properties)
           properties = v[:schema][:properties]
@@ -837,7 +838,7 @@ class OpenApiImport
           response_example << "["
         end
 
-        response_example += get_examples(properties) unless properties.empty?
+        response_example += get_examples(properties, :key_value, remove_readonly) unless properties.empty?
 
         unless response_example.empty?
           if v[:schema].key?(:properties) || v[:schema].key?(:allOf)
