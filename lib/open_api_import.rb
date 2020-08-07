@@ -389,7 +389,8 @@ class OpenApiImport
                           end
 
                           #todo: consider check default and insert it
-                          if dpv.key?(:type)
+                          #todo: remove array from here and add the option to get_examples for the case thisisthekey: ['xxxx']
+                          if dpv.key?(:type) and dpv[:type]!='array'
                             params_data << get_examples({dpk => dpv}, :only_value, true).join
                             params_data[-1].chop!.chop! if params_data[-1].to_s[-2..-1]==', '
                             params_data.pop if params_data[-1].match?(/^\s*$/im)
@@ -400,7 +401,6 @@ class OpenApiImport
                             params_data << "#{dpk}: #{valv}"
                           end
                         }
-
                         if params_data.size > 0
                           if data_examples_all_of == true and data_examples.size > 0
                             data_examples[0]+=params_data
