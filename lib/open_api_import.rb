@@ -369,7 +369,7 @@ class OpenApiImport
                             end
                           end
                           if dpv.keys.include?(:description)
-                            description_parameters << "#    #{dpk}: (#{dpv[:type]}) #{dpv[:description]}"
+                            description_parameters << "#    #{dpk}: (#{dpv[:type]}) #{dpv[:description].split("\n").join("\n#\t\t\t")}"
                           end
 
                           data_pattern += get_patterns(dpk,dpv)
