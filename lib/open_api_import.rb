@@ -374,6 +374,17 @@ class OpenApiImport
 
                           data_pattern += get_patterns(dpk,dpv)
                           data_pattern.uniq!
+                          dpkeys = []
+                          data_pattern.reject! do |dp| 
+                            dpkey = dp.scan(/^'\w+'/)
+
+                            if dpkeys.include?(dpkey)
+                              true
+                            else
+                              dpkeys << dpkey
+                              false
+                            end
+                          end
 
                           if dpv.keys.include?(:readOnly) and dpv[:readOnly] == true
                             data_read_only << dpk
