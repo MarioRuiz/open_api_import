@@ -716,17 +716,19 @@ class OpenApiImport
               end
 
               if val.key?(:items) and val[:items].key?(:enum)
+                #before we were getting in all these cases a random value from the enum, now we are getting the first position by default
+                #the reason is to avoid confusion later in case we want to compare two swaggers and verify the changes
                 if type==:only_value
                   if val[:items][:enum][0].is_a?(String)
-                    example << " [\"" + val[:items][:enum].sample + "\"] "
+                    example << " [\"" + val[:items][:enum][0] + "\"] "
                   else
-                    example << " [" + val[:items][:enum].sample + "] "
+                    example << " [" + val[:items][:enum][0] + "] "
                   end
                 else
                   if val[:items][:enum][0].is_a?(String)
-                    example << " #{prop.to_sym}: [\"" + val[:items][:enum].sample + "\"], "
+                    example << " #{prop.to_sym}: [\"" + val[:items][:enum][0] + "\"], "
                   else
-                    example << " #{prop.to_sym}: [" + val[:items][:enum].sample + "], "
+                    example << " #{prop.to_sym}: [" + val[:items][:enum][0] + "], "
                   end
                 end
               else
