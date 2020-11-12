@@ -376,7 +376,7 @@ class OpenApiImport
                           data_pattern.uniq!
                           dpkeys = []
                           data_pattern.reject! do |dp| 
-                            dpkey = dp.scan(/^'\w+'/)
+                            dpkey = dp.scan(/^'[\w\.]+'/)
 
                             if dpkeys.include?(dpkey)
                               true
