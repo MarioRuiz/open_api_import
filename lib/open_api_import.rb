@@ -925,6 +925,8 @@ class OpenApiImport
         if dpv[:pattern].include?('\\\\/')
           #for cases like this: ^[^\.\\/:*?"<>|][^\\/:*?"<>|]{0,13}[^\.\\/:*?"<>|]?$
           data_pattern << "'#{dpk}': /#{dpv[:pattern].to_s.gsub('\/','/')}/"
+        elsif dpv[:pattern].include?('\\x')
+          data_pattern << "'#{dpk}': /#{dpv[:pattern].to_s.gsub('\\x','\\u')}/"
         else
           data_pattern << "'#{dpk}': /#{dpv[:pattern].to_s}/"
         end
