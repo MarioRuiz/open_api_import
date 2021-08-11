@@ -238,6 +238,20 @@ RSpec.describe OpenApiImport do
             expect(content).to include('def self.get_products(latitude: LATITUDE, longitude: LONGITUDE)')
         end
 
+        it 'converts patterns from \\x to \\u' do
+            file_name = './spec/fixtures/v2.0/yaml/petstore.yaml'
+            File.delete("#{file_name}.rb") if File.exist?("#{file_name}.rb")
+            OpenApiImport.from file_name, create_method_name: :operation_id
+            expect(File.exist?("#{file_name}.rb")).to eq true
+            content = File.read("#{file_name}.rb")
+            eval(content)
+            req = Swagger::SwaggerPetstore::V1_0_0::Root.list_pets
+            expect(req.key?(:data_pattern)).to eq true
+            expect(req[:data_pattern].key?(:name)).to eq true
+            expect(req[:data_pattern][:name].to_s).to eq '(?-mix:^[a-z\u00DF-\u00FF][a-z0-9\-_\u{DF}-\u{FF}]*$)'
+        end
+
+
     end
 
 

@@ -83,6 +83,7 @@ definitions:
         format: int64
       name:
         type: string
+        pattern: ^[a-z\x00DF-\x00FF][a-z0-9\-_\x{DF}-\x{FF}]*$
       tag:
         type: string
   Pets:
