@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = 'open_api_import'
-  s.version     = '0.10.10'
+  s.version     = '0.10.11'
   s.summary     = "OpenApiImport -- Import a Swagger or Open API file and create a Ruby Request Hash file including all requests and responses with all the examples. The file can be in JSON or YAML"
   s.description = "OpenApiImport -- Import a Swagger or Open API file and create a Ruby Request Hash file including all requests and responses with all the examples. The file can be in JSON or YAML"
   s.authors     = ["Mario Ruiz"]
@@ -12,6 +12,7 @@ Gem::Specification.new do |s|
   s.add_runtime_dependency 'oas_parser', '~> 0.25'
   s.add_runtime_dependency 'rufo', '~> 0.12'
   s.add_runtime_dependency 'nice_hash', '~> 1.17'
+  s.add_runtime_dependency 'activesupport', '~> 6.1' #due this bug on activesupport https://github.com/Nexmo/oas_parser/issues/65
   s.add_development_dependency 'rspec', '~> 3.8', '>= 3.8.0'
   s.add_development_dependency 'coveralls', '~> 0.8', '>= 0.8.22'
   s.test_files    = s.files.grep(%r{^(test|spec|features)/})
