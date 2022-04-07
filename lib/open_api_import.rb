@@ -218,7 +218,7 @@ class OpenApiImport
 
             output << ""
             output << "# operationId: #{cont[:operationId]}, method: #{met}"
-            output << "# summary: #{cont[:summary]}"
+            output << "# summary: #{cont[:summary]}"      
             if !cont[:description].to_s.split("\n").empty?
               output << "# description: "
               cont[:description].to_s.split("\n").each do |d|
@@ -238,14 +238,12 @@ class OpenApiImport
                 data_pattern += get_patterns('', v[:schema]) if v.key?(:schema)
                 data_pattern.uniq!
                 v[:description] = v[:description].to_s.gsub("'", %q(\\\'))
-                
                 if !response_example.empty?
                   responses << "'#{k}': { "
                   responses << "message: '#{v[:description]}', "
                   responses << "data: "
                   responses << response_example
-                  responses << "},"
-                  
+                  responses << "},"                      
                   if mock_response and mock_example.size==0
                     mock_example << "code: '#{k}',"
                     mock_example << "message: '#{v[:description]}',"
@@ -254,9 +252,8 @@ class OpenApiImport
                   end
                   
                 else
-                  responses << "'#{k}': { message: '#{v[:description]}'}, "
+                  responses << "'#{k}': { message: '#{v[:description]}'}, "          
                 end
-
               end
             end
             # todo: for open api 3.0 add the new Link feature: https://swagger.io/docs/specification/links/
@@ -295,18 +292,19 @@ class OpenApiImport
                       params_path << param_name
                     end
                     #params_required << param_name if p[:required].to_s=="true"
-                    description_parameters << "#    #{p[:name]}: (#{type}) #{"(required)" if p[:required].to_s=="true"} #{p[:description]}"
+                    description_parameters << "#    #{p[:name]}: (#{type}) #{"(required)" if p[:required].to_s=="true"} #{p[:description].split("\n").join("\n#\t\t\t")}"
                   end
                 elsif p[:in] == "query"
                   params_query << p[:name]
                   params_required << p[:name] if p[:required].to_s=="true"
-                  description_parameters << "#    #{p[:name]}: (#{type}) #{"(required)" if p[:required].to_s=="true"} #{p[:description]}"
+                  description_parameters << "#    #{p[:name]}: (#{type}) #{"(required)" if p[:required].to_s=="true"} #{p[:description].split("\n").join("\n#\t\t\t")}"
                 elsif p[:in] == "formData" or p[:in] == "formdata"
                   #todo: take in consideration: default, required
                   #todo: see if we should add the required as params to the method and not required as options
                   #todo: set on data the required fields with the values from args
 
-                  description_parameters << "#    #{p[:name]}: (#{p[:type]}) #{p[:description]}"
+                  description_parameters << "#    #{p[:name]}: (#{p[:type]}) #{p[:description].split("\n").join("\n#\t\t\t")}"
+      
                   case p[:type]
                   when /^string$/i
                     data_form << "#{p[:name]}: ''"
@@ -368,9 +366,10 @@ class OpenApiImport
                               valv = ""
                             end
                           end
+
                           if dpv.keys.include?(:description)
                             description_parameters << "#    #{dpk}: (#{dpv[:type]}) #{dpv[:description].split("\n").join("\n#\t\t\t")}"
-                          end
+                          end              
 
                           data_pattern += get_patterns(dpk,dpv)
                           data_pattern.uniq!
@@ -407,9 +406,11 @@ class OpenApiImport
                             params_data.pop if params_data[-1].match?(/^\s*$/im)
                           else
                             if valv.to_s == ""
-                              valv = '"' + valv + '"'
+                              valv = '""'
+                            elsif valv.include?('"')
+                              valv.gsub!('"',"'")
                             end
-                            params_data << "#{dpk}: #{valv}"
+                            params_data << "#{dpk}: #{valv}"                                                        
                           end
                         }
                         if params_data.size > 0
@@ -705,10 +706,13 @@ class OpenApiImport
             if val[:example].is_a?(Array) and val.key?(:type) and val[:type]=='string'
               example << " #{prop.to_sym}: \"#{val[:example][0]}\", " # only the first example
             else
-              example << if val[:example].is_a?(String) or val[:example].is_a?(Time)
-                " #{prop.to_sym}: \"#{val[:example]}\", "
+              if val[:example].is_a?(String)
+                val[:example].gsub!('"', "'")
+                example << " #{prop.to_sym}: \"#{val[:example]}\", "
+              elsif val[:example].is_a?(Time)
+                example << " #{prop.to_sym}: \"#{val[:example]}\", "
               else
-                " #{prop.to_sym}: #{val[:example]}, "
+                example << " #{prop.to_sym}: #{val[:example]}, "
               end
             end
           elsif val.key?(:type)
@@ -716,7 +720,7 @@ class OpenApiImport
             format = val[:type] if format.to_s == ""
             case val[:type].downcase
             when "string"
-              example << " #{prop.to_sym}: \"#{format}\", "
+              example << " #{prop.to_sym}: \"#{format}\", "              
             when "integer", "number"
               example << " #{prop.to_sym}: 0, "
             when "boolean"
@@ -748,7 +752,7 @@ class OpenApiImport
                   example << get_response_examples({schema: val}, remove_readonly).join("\n")
                 else
                   example << " #{prop.to_sym}: " + get_response_examples({schema: val}, remove_readonly).join("\n") + ", "
-                end
+                end  
               end
             when "object"
               #todo: differ between response examples and data examples
@@ -809,7 +813,6 @@ class OpenApiImport
           else
             tresp = ""
           end
-
           if tresp.is_a?(String)
             response_example << tresp
           elsif tresp.is_a?(Hash)
