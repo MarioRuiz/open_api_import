@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = 'open_api_import'
-  s.version     = '0.11.0'
+  s.version     = '0.11.1'
   s.summary     = "OpenApiImport -- Import a Swagger or Open API file and create a Ruby Request Hash file including all requests and responses with all the examples. The file can be in JSON or YAML"
   s.description = "OpenApiImport -- Import a Swagger or Open API file and create a Ruby Request Hash file including all requests and responses with all the examples. The file can be in JSON or YAML"
   s.authors     = ["Mario Ruiz"]
@@ -18,7 +18,7 @@ Gem::Specification.new do |s|
   s.test_files    = s.files.grep(%r{^(test|spec|features)/})
   s.require_paths = ["lib"]
   s.executables << 'open_api_import'
-  s.required_ruby_version = '>= 2.5'
+  s.required_ruby_version = '>= 2.6'
   s.post_install_message = "Thanks for installing! Visit us on https://github.com/MarioRuiz/open_api_import"
 end
 
