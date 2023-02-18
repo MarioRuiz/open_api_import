@@ -14,7 +14,6 @@ Gem::Specification.new do |s|
   s.add_runtime_dependency 'nice_hash', '~> 1.17'
   s.add_runtime_dependency 'activesupport', '~> 6.1' #due this bug on activesupport https://github.com/Nexmo/oas_parser/issues/65
   s.add_development_dependency 'rspec', '~> 3.8', '>= 3.8.0'
-  s.add_development_dependency 'coveralls', '~> 0.8', '>= 0.8.22'
   s.test_files    = s.files.grep(%r{^(test|spec|features)/})
   s.require_paths = ["lib"]
   s.executables << 'open_api_import'
