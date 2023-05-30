@@ -209,7 +209,7 @@ class OpenApiImport
   
               output << ""
               output << "# operationId: #{cont[:operationId]}, method: #{met}"
-              output << "# summary: #{cont[:summary]}"
+              output << "# summary: #{cont[:summary].split("\n").join("\n#          ")}" if cont.key?(:summary)
               if !cont[:description].to_s.split("\n").empty?
                 output << "# description: "
                 cont[:description].to_s.split("\n").each do |d|
@@ -284,12 +284,14 @@ class OpenApiImport
                         params_path << param_name
                       end
                       #params_required << param_name if p[:required].to_s=="true"
-                      description_parameters << "#    #{p[:name]}: (#{type}) #{"(required)" if p[:required].to_s == "true"} #{p[:description].split("\n").join("\n#\t\t\t")}"
+                      @logger.warn "Description key is missing for #{met} #{path.path} #{p[:name]}" if p[:description].nil?
+                      description_parameters << "#    #{p[:name]}: (#{type}) #{"(required)" if p[:required].to_s == "true"} #{p[:description].to_s.split("\n").join("\n#\t\t\t")}"
                     end
                   elsif p[:in] == "query"
                     params_query << p[:name]
                     params_required << p[:name] if p[:required].to_s == "true"
-                    description_parameters << "#    #{p[:name]}: (#{type}) #{"(required)" if p[:required].to_s == "true"} #{p[:description].split("\n").join("\n#\t\t\t")}"
+                    @logger.warn "Description key is missing for #{met} #{path.path} #{p[:name]}" if p[:description].nil?
+                    description_parameters << "#    #{p[:name]}: (#{type}) #{"(required)" if p[:required].to_s == "true"} #{p[:description].to_s.split("\n").join("\n#\t\t\t")}"
                   elsif p[:in] == "formData" or p[:in] == "formdata"
                     #todo: take in consideration: default, required
                     #todo: see if we should add the required as params to the method and not required as options
@@ -403,7 +405,7 @@ class OpenApiImport
                               if valv.to_s == ""
                                 valv = '""'
                               elsif valv.include?('"')
-                                valv.gsub!('"', "'")
+                                valv.gsub!('"', "'") unless valv.include?("'")
                               end
                               params_data << "#{dpk}: #{valv}"
                             end
@@ -539,8 +541,12 @@ class OpenApiImport
                   begin
                     data_examples[0].uniq!
                     data_ex = eval("{#{data_examples[0].join(", ")}}")
+                  rescue SyntaxError  
+                    data_ex = {}
+                    @logger.warn "Syntax error: #{met} for path: #{path.path} evaluating data_examples[0] => #{data_examples[0].inspect}"
                   rescue
                     data_ex = {}
+                    @logger.warn "Syntax error: #{met} for path: #{path.path} evaluating data_examples[0] => #{data_examples[0].inspect}"
                   end
                   if (data_required.grep(/\./)).empty?
                     reqdata = filter(data_ex, data_required) #not nested
@@ -548,6 +554,7 @@ class OpenApiImport
                     reqdata = filter(data_ex, data_required, true) #nested
                   end
                   unless reqdata.empty?
+                    reqdata.uniq!
                     phsd = pretty_hash_symbolized(reqdata)
                     phsd[0] = "data: {"
                     output += phsd
@@ -569,6 +576,7 @@ class OpenApiImport
                     reqdata << edata unless read_only
                   end
                   unless reqdata.empty?
+                    reqdata.uniq!
                     output << "data: {"
                     output << reqdata.join(", \n")
                     output << "},"

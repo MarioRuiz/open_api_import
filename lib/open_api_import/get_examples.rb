@@ -17,7 +17,7 @@ module LibOpenApiImport
             example << " #{prop.to_sym}: \"#{val[:example][0]}\", " # only the first example
           else
             if val[:example].is_a?(String)
-              val[:example].gsub!('"', "'")
+              val[:example].gsub!('"', "'") unless val.include?("'")
               example << " #{prop.to_sym}: \"#{val[:example]}\", "
             elsif val[:example].is_a?(Time)
               example << " #{prop.to_sym}: \"#{val[:example]}\", "
