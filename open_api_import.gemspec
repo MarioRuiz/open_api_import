@@ -9,7 +9,7 @@ Gem::Specification.new do |s|
   s.extra_rdoc_files = ["LICENSE","README.md"]
   s.homepage    = 'https://github.com/MarioRuiz/open_api_import'
   s.license       = 'MIT'
-  s.add_runtime_dependency 'oas_parser', '~> 0.25'
+  s.add_runtime_dependency 'oas_parser_reborn', '~> 0.25'
   s.add_runtime_dependency 'rufo', '~> 0.16.1'
   s.add_runtime_dependency 'nice_hash', '~> 1.18'
   s.add_runtime_dependency 'activesupport', '~> 6.1' #due this bug on activesupport https://github.com/Nexmo/oas_parser/issues/65
