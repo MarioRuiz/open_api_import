@@ -52,12 +52,12 @@ class OpenApiImport
         begin
           definition = OasParser::Definition.resolve(swagger_file)
         rescue Exception => stack
-          message = "There was a problem parsing the Open Api document using the oas_parser gem. The execution was aborted.\n"
-          message += "Visit the github for oas_parser gem for bugs and more info: https://github.com/Nexmo/oas_parser\n"
+          message = "There was a problem parsing the Open Api document using the oas_parser_reborn gem. The execution was aborted.\n"
+          message += "Visit the github for oas_parser_reborn gem for bugs and more info: https://github.com/MarioRuiz/oas_parser_reborn\n"
           message += "Error: #{stack.message}"
           puts message
           @logger.fatal message
-          @logger.fatal stack.backtrace
+          @logger.fatal stack.backtrace.join("\n")
           exit!
         end
   

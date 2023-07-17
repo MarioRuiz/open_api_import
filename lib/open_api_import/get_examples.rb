@@ -36,11 +36,11 @@ module LibOpenApiImport
           when "boolean"
             example << " #{prop.to_sym}: true, "
           when "array"
-            if val.key?(:items) and val[:items].size == 1 and val[:items].is_a?(Hash) and val[:items].key?(:type)
+            if val.key?(:items) and val[:items].is_a?(Hash) and val[:items].size == 1 and val[:items].key?(:type)
               val[:items][:enum] = [val[:items][:type]]
             end
 
-            if val.key?(:items) and val[:items].key?(:enum)
+            if val.key?(:items) and !val[:items].nil? and val[:items].key?(:enum)
               #before we were getting in all these cases a random value from the enum, now we are getting the first position by default
               #the reason is to avoid confusion later in case we want to compare two swaggers and verify the changes
               if type == :only_value

@@ -60,8 +60,8 @@ module LibOpenApiImport
       end
     elsif v.key?(:schema) && v[:schema].is_a?(Hash) &&
           (v[:schema].key?(:properties) ||
-           (v[:schema].key?(:items) && v[:schema][:items].key?(:properties)) ||
-           (v[:schema].key?(:items) && v[:schema][:items].key?(:allOf)) ||
+           (v[:schema].key?(:items) && v[:schema][:items].is_a?(Hash) && v[:schema][:items].key?(:properties)) ||
+           (v[:schema].key?(:items) && v[:schema][:items].is_a?(Hash) && v[:schema][:items].key?(:allOf)) ||
            v[:schema].key?(:allOf))
       properties = {}
       if v[:schema].key?(:properties)
@@ -89,7 +89,7 @@ module LibOpenApiImport
           response_example << "]"
         end
       end
-    elsif v.key?(:schema) and v[:schema].key?(:items) and v[:schema][:items].key?(:type)
+    elsif v.key?(:schema) and v[:schema].key?(:items) and v[:schema][:items].is_a?(Hash) and v[:schema][:items].key?(:type)
       # for the case only type supplied but nothing else for the array
       response_example << "[\"#{v[:schema][:items][:type]}\"]"
     end
