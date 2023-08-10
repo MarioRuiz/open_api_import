@@ -7,6 +7,8 @@ module LibOpenApiImport
       if dpv[:pattern].include?('\\\\/')
         #for cases like this: ^[^\.\\/:*?"<>|][^\\/:*?"<>|]{0,13}[^\.\\/:*?"<>|]?$
         data_pattern << "'#{dpk}': /#{dpv[:pattern].to_s.gsub('\/', "/")}/"
+      elsif dpv[:pattern].match?(/\\x[0-9ABCDEF][0-9ABCDEF]\-/)
+        data_pattern << "'#{dpk}': /#{dpv[:pattern].to_s.gsub('\\x', '\\u00')}/"
       elsif dpv[:pattern].include?('\\x')
         data_pattern << "'#{dpk}': /#{dpv[:pattern].to_s.gsub('\\x', '\\u')}/"
       else
