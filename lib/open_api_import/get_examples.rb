@@ -31,8 +31,16 @@ module LibOpenApiImport
           case val[:type].downcase
           when "string"
             example << " #{prop.to_sym}: \"#{format}\", "
-          when "integer", "number"
+          when "integer"
             example << " #{prop.to_sym}: 0, "
+          when "number"
+            format_name = format.to_s.downcase
+            number_value = if %w[float double decimal].include?(format_name)
+                "0.0"
+              else
+                "0"
+              end
+            example << " #{prop.to_sym}: #{number_value}, "
           when "boolean"
             example << " #{prop.to_sym}: true, "
           when "array"
@@ -59,13 +67,12 @@ module LibOpenApiImport
             else
               #todo: differ between response examples and data examples
               examplet = get_response_examples({ schema: val }, remove_readonly).join("\n")
-              examplet = '[]' if examplet.empty?
+              examplet = "[]" if examplet.empty?
               if type == :only_value
                 example << examplet
               else
                 example << " #{prop.to_sym}: " + examplet + ", "
-              end              
-
+              end
             end
           when "object"
             #todo: differ between response examples and data examples

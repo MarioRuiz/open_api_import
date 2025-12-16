@@ -1,0 +1,28 @@
+swagger: "2.0"
+info:
+  title: "Float API"
+  version: "1.0.0"
+host: example.com
+basePath: /
+schemes:
+  - https
+produces:
+  - application/json
+paths:
+  /resource:
+    get:
+      operationId: getResource
+      responses:
+        '200':
+          description: Float response example
+          schema:
+            type: object
+            properties:
+              floatValue:
+                type: number
+                format: float
+                description: Float field with float format
+              integerValue:
+                type: integer
+                format: int32
+                description: Integer field with int format
