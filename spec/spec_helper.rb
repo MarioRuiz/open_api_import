@@ -1,5 +1,5 @@
-require "coveralls"
-Coveralls.wear!
+require "simplecov"
+SimpleCov.start
 
 require "open_api_import"
 
