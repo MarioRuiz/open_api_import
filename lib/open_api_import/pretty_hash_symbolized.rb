@@ -1,6 +1,10 @@
+# frozen_string_literal: true
+
 module LibOpenApiImport
-  #gen pretty hash symbolized
-  private def pretty_hash_symbolized(hash)
+  private
+
+  # gen pretty hash symbolized
+  def pretty_hash_symbolized(hash)
     output = []
     output << "{"
     hash.each do |kr, kv|
@@ -13,6 +17,6 @@ module LibOpenApiImport
       end
     end
     output << "},"
-    return output
+    output
   end
 end

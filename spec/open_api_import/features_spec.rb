@@ -5,7 +5,7 @@ RSpec.describe OpenApiImport do
     describe "mock_response option" do
       it "includes mock_response when mock_response is true" do
         file_name = "./spec/fixtures/v2.0/yaml/petstore-simple.yaml"
-        File.delete("#{file_name}.rb") if File.exist?("#{file_name}.rb")
+        FileUtils.rm_f("#{file_name}.rb")
         OpenApiImport.from file_name, create_method_name: :operation_id, mock_response: true
         expect(File.exist?("#{file_name}.rb")).to eq true
         content = File.read("#{file_name}.rb")
@@ -25,16 +25,16 @@ RSpec.describe OpenApiImport do
     describe "silent option" do
       it "suppresses output when silent is true" do
         file_name = "./spec/fixtures/v2.0/yaml/petstore-minimal.yaml"
-        expect {
+        expect do
           OpenApiImport.from file_name, silent: true
-        }.not_to output(/Requests file/).to_stdout
+        end.not_to output(/Requests file/).to_stdout
       end
 
       it "displays output when silent is false" do
         file_name = "./spec/fixtures/v2.0/yaml/petstore-minimal.yaml"
-        expect {
+        expect do
           OpenApiImport.from file_name, silent: false
-        }.to output(/Requests file/).to_stdout
+        end.to output(/Requests file/).to_stdout
       end
 
       it "still creates log file when silent" do
@@ -48,12 +48,12 @@ RSpec.describe OpenApiImport do
       it "raises ParseError for unparseable files" do
         file_name = "./spec/fixtures/wrong/invalid_syntax.yaml"
         File.write(file_name, "{{invalid yaml content!!")
-        expect {
+        expect do
           OpenApiImport.from file_name
-        }.to raise_error(OpenApiImport::ParseError)
+        end.to raise_error(OpenApiImport::ParseError)
       ensure
-        File.delete(file_name) if File.exist?(file_name)
-        File.delete("#{file_name}_open_api_import.log") if File.exist?("#{file_name}_open_api_import.log")
+        FileUtils.rm_f(file_name)
+        FileUtils.rm_f("#{file_name}_open_api_import.log")
       end
 
       it "handles missing files by returning nil" do
@@ -73,7 +73,7 @@ RSpec.describe OpenApiImport do
       it "returns hash of generated content without writing files" do
         file_name = "./spec/fixtures/v2.0/yaml/petstore-minimal.yaml"
         temp_rb = "#{file_name}.rb"
-        File.delete(temp_rb) if File.exist?(temp_rb)
+        FileUtils.rm_f(temp_rb)
 
         result = OpenApiImport.from file_name, return_data: true, silent: true
         expect(result).to be_a(Hash)
@@ -92,7 +92,7 @@ RSpec.describe OpenApiImport do
     describe "formData parameters" do
       it "generates data_examples with formData values" do
         file_name = "./spec/fixtures/v2.0/yaml/formdata_api.yaml"
-        File.delete("#{file_name}.rb") if File.exist?("#{file_name}.rb")
+        FileUtils.rm_f("#{file_name}.rb")
         OpenApiImport.from file_name, create_method_name: :operation_id, silent: true
         expect(File.exist?("#{file_name}.rb")).to eq true
         content = File.read("#{file_name}.rb")
@@ -115,7 +115,7 @@ RSpec.describe OpenApiImport do
     describe "shared path-level parameters" do
       it "distributes shared parameters to all methods on the path" do
         file_name = "./spec/fixtures/v2.0/yaml/shared_params.yaml"
-        File.delete("#{file_name}.rb") if File.exist?("#{file_name}.rb")
+        FileUtils.rm_f("#{file_name}.rb")
         OpenApiImport.from file_name, create_method_name: :operation_id, silent: true
         content = File.read("#{file_name}.rb")
         expect(content).to include("def self.get_item")
@@ -128,7 +128,7 @@ RSpec.describe OpenApiImport do
     describe "readOnly and default values" do
       it "generates data_read_only key" do
         file_name = "./spec/fixtures/v2.0/yaml/readonly_defaults.yaml"
-        File.delete("#{file_name}.rb") if File.exist?("#{file_name}.rb")
+        FileUtils.rm_f("#{file_name}.rb")
         OpenApiImport.from file_name, create_method_name: :operation_id, silent: true
         content = File.read("#{file_name}.rb")
         expect(content).to include("data_read_only:")
@@ -146,7 +146,7 @@ RSpec.describe OpenApiImport do
     describe "oneOf body schemas" do
       it "generates data_examples from oneOf schemas" do
         file_name = "./spec/fixtures/v3.0/oneof_api.yaml"
-        File.delete("#{file_name}.rb") if File.exist?("#{file_name}.rb")
+        FileUtils.rm_f("#{file_name}.rb")
         OpenApiImport.from file_name, create_method_name: :operation_id, silent: true
         expect(File.exist?("#{file_name}.rb")).to eq true
         content = File.read("#{file_name}.rb")
@@ -168,7 +168,7 @@ RSpec.describe OpenApiImport do
     describe "OpenAPI 3.0 support" do
       it "handles v3.0 specs with requestBody" do
         file_name = "./spec/fixtures/v3.0/petstore.yaml"
-        File.delete("#{file_name}.rb") if File.exist?("#{file_name}.rb")
+        FileUtils.rm_f("#{file_name}.rb")
         result = OpenApiImport.from file_name, silent: true
         expect(result).to eq true
         expect(File.exist?("#{file_name}.rb")).to eq true
@@ -176,7 +176,7 @@ RSpec.describe OpenApiImport do
 
       it "handles v3.0 api-with-examples (content -> examples)" do
         file_name = "./spec/fixtures/v3.0/api-with-examples.yaml"
-        File.delete("#{file_name}.rb") if File.exist?("#{file_name}.rb")
+        FileUtils.rm_f("#{file_name}.rb")
         result = OpenApiImport.from file_name, create_method_name: :operation_id, silent: true
         expect(result).to eq true
         content = File.read("#{file_name}.rb")
@@ -185,7 +185,7 @@ RSpec.describe OpenApiImport do
 
       it "handles v3.0 expanded petstore with allOf in requestBody" do
         file_name = "./spec/fixtures/v3.0/petstore-expanded.yaml"
-        File.delete("#{file_name}.rb") if File.exist?("#{file_name}.rb")
+        FileUtils.rm_f("#{file_name}.rb")
         result = OpenApiImport.from file_name, create_method_name: :operation_id, silent: true
         expect(result).to eq true
         content = File.read("#{file_name}.rb")
@@ -194,7 +194,7 @@ RSpec.describe OpenApiImport do
 
       it "handles v2.0 api-with-examples (examples -> application/json)" do
         file_name = "./spec/fixtures/v2.0/yaml/api-with-examples.yaml"
-        File.delete("#{file_name}.rb") if File.exist?("#{file_name}.rb")
+        FileUtils.rm_f("#{file_name}.rb")
         result = OpenApiImport.from file_name, create_method_name: :operation_id, silent: true
         expect(result).to eq true
         content = File.read("#{file_name}.rb")
@@ -205,7 +205,7 @@ RSpec.describe OpenApiImport do
     describe "OpenAPI 3.1 support" do
       it "handles v3.1 specs with nullable type arrays" do
         file_name = "./spec/fixtures/v3.0/petstore_3_1.yaml"
-        File.delete("#{file_name}.rb") if File.exist?("#{file_name}.rb")
+        FileUtils.rm_f("#{file_name}.rb")
         result = OpenApiImport.from file_name, silent: true
         expect(result).to eq true
         expect(File.exist?("#{file_name}.rb")).to eq true
@@ -244,7 +244,7 @@ RSpec.describe OpenApiImport do
     describe "JSON format support" do
       it "handles JSON swagger files" do
         file_name = "./spec/fixtures/v2.0/json/petstore-simple.json"
-        File.delete("#{file_name}.rb") if File.exist?("#{file_name}.rb")
+        FileUtils.rm_f("#{file_name}.rb")
         result = OpenApiImport.from file_name, create_method_name: :operation_id, silent: true
         expect(result).to eq true
         content = File.read("#{file_name}.rb")
@@ -266,7 +266,7 @@ RSpec.describe OpenApiImport do
     describe "create_constants with query params" do
       it "generates constants with operationId method naming" do
         file_name = "./spec/fixtures/v2.0/yaml/uber.yaml"
-        File.delete("#{file_name}.rb") if File.exist?("#{file_name}.rb")
+        FileUtils.rm_f("#{file_name}.rb")
         OpenApiImport.from file_name, create_method_name: :operationId, create_constants: true, silent: true
         content = File.read("#{file_name}.rb")
         expect(content).to include("LATITUDE")

@@ -64,7 +64,7 @@ RSpec.describe LibOpenApiImport do
     end
 
     it "uses examples (plural, OAS 3.1) when example is absent" do
-      properties = { name: { type: "string", examples: ["Fido", "Rex"] } }
+      properties = { name: { type: "string", examples: %w[Fido Rex] } }
       result = helper.send(:get_examples, properties)
       expect(result.join).to include("Fido")
     end
@@ -96,7 +96,7 @@ RSpec.describe LibOpenApiImport do
     end
 
     it "handles array example that is Array but type is string (takes first)" do
-      properties = { tag: { type: "string", example: ["alpha", "beta"] } }
+      properties = { tag: { type: "string", example: %w[alpha beta] } }
       result = helper.send(:get_examples, properties)
       expect(result.join).to include("alpha")
     end
@@ -104,7 +104,7 @@ RSpec.describe LibOpenApiImport do
     it "skips readOnly properties when remove_readonly is true" do
       properties = {
         id: { type: "integer", readOnly: true },
-        name: { type: "string" },
+        name: { type: "string" }
       }
       result = helper.send(:get_examples, properties, :key_value, true)
       expect(result.join).not_to include("id:")
@@ -114,7 +114,7 @@ RSpec.describe LibOpenApiImport do
     it "includes readOnly properties when remove_readonly is false" do
       properties = {
         id: { type: "integer", readOnly: true },
-        name: { type: "string" },
+        name: { type: "string" }
       }
       result = helper.send(:get_examples, properties, :key_value, false)
       expect(result.join).to include("id:")
@@ -139,8 +139,8 @@ RSpec.describe LibOpenApiImport do
       properties = {
         status: {
           type: "array",
-          items: { type: "string", enum: ["active", "inactive"] },
-        },
+          items: { type: "string", enum: %w[active inactive] }
+        }
       }
       result = helper.send(:get_examples, properties)
       expect(result.join).to include("active")
@@ -150,8 +150,8 @@ RSpec.describe LibOpenApiImport do
       properties = {
         tags: {
           type: "array",
-          items: { type: "string" },
-        },
+          items: { type: "string" }
+        }
       }
       result = helper.send(:get_examples, properties)
       expect(result.join).to include("tags:")
@@ -162,8 +162,8 @@ RSpec.describe LibOpenApiImport do
       properties = {
         status: {
           type: "array",
-          items: { type: "string", enum: ["active", "inactive"] },
-        },
+          items: { type: "string", enum: %w[active inactive] }
+        }
       }
       result = helper.send(:get_examples, properties, :only_value)
       expect(result.join).to include("active")
@@ -173,8 +173,8 @@ RSpec.describe LibOpenApiImport do
     it "infers object type from :properties key when no explicit type" do
       properties = {
         address: {
-          properties: { city: { type: "string" } },
-        },
+          properties: { city: { type: "string" } }
+        }
       }
       result = helper.send(:get_examples, properties)
       expect(result.join).to include("address:")
@@ -183,15 +183,15 @@ RSpec.describe LibOpenApiImport do
     it "infers array type from :items key when no explicit type" do
       properties = {
         tags: {
-          items: { type: "string", enum: ["a", "b"] },
-        },
+          items: { type: "string", enum: %w[a b] }
+        }
       }
       result = helper.send(:get_examples, properties)
       expect(result.join).to include("tags:")
     end
 
     it "handles nullable type arrays (OAS 3.1)" do
-      properties = { name: { type: ["string", "null"] } }
+      properties = { name: { type: %w[string null] } }
       result = helper.send(:get_examples, properties)
       expect(result.join).to include("name:")
       expect(result.join).to include('"string"')
@@ -226,8 +226,8 @@ RSpec.describe LibOpenApiImport do
     it "handles v2.0 string examples (application/json)" do
       v = {
         examples: {
-          'application/json': '{"name": "test"}',
-        },
+          "application/json": '{"name": "test"}'
+        }
       }
       result = helper.send(:get_response_examples, v)
       expect(result).not_to be_empty
@@ -237,8 +237,8 @@ RSpec.describe LibOpenApiImport do
     it "handles v2.0 hash examples (application/json)" do
       v = {
         examples: {
-          'application/json': { name: "test", id: 1 },
-        },
+          "application/json": { name: "test", id: 1 }
+        }
       }
       result = helper.send(:get_response_examples, v)
       expect(result).not_to be_empty
@@ -248,8 +248,8 @@ RSpec.describe LibOpenApiImport do
     it "handles v2.0 array examples (application/json)" do
       v = {
         examples: {
-          'application/json': [{ name: "a" }, { name: "b" }],
-        },
+          "application/json": [{ name: "a" }, { name: "b" }]
+        }
       }
       result = helper.send(:get_response_examples, v)
       expect(result).not_to be_empty
@@ -260,15 +260,15 @@ RSpec.describe LibOpenApiImport do
     it "handles v3.0 content -> application/json -> schema with properties" do
       v = {
         content: {
-          'application/json': {
+          "application/json": {
             schema: {
               properties: {
                 name: { type: "string" },
-                age: { type: "integer" },
-              },
-            },
-          },
-        },
+                age: { type: "integer" }
+              }
+            }
+          }
+        }
       }
       result = helper.send(:get_response_examples, v)
       expect(result).not_to be_empty
@@ -279,14 +279,14 @@ RSpec.describe LibOpenApiImport do
     it "handles v3.0 content -> examples (hash value)" do
       v = {
         content: {
-          'application/json': {
+          "application/json": {
             examples: {
               example1: {
-                value: { name: "test", id: 1 },
-              },
-            },
-          },
-        },
+                value: { name: "test", id: 1 }
+              }
+            }
+          }
+        }
       }
       result = helper.send(:get_response_examples, v)
       expect(result).not_to be_empty
@@ -296,14 +296,14 @@ RSpec.describe LibOpenApiImport do
     it "handles v3.0 content -> examples (string value)" do
       v = {
         content: {
-          'application/json': {
+          "application/json": {
             examples: {
               example1: {
-                value: "simple string response",
-              },
-            },
-          },
-        },
+                value: "simple string response"
+              }
+            }
+          }
+        }
       }
       result = helper.send(:get_response_examples, v)
       expect(result).to eq(["simple string response"])
@@ -312,14 +312,14 @@ RSpec.describe LibOpenApiImport do
     it "handles v3.0 content -> examples (array value)" do
       v = {
         content: {
-          'application/json': {
+          "application/json": {
             examples: {
               example1: {
-                value: [{ id: 1 }, { id: 2 }],
-              },
-            },
-          },
-        },
+                value: [{ id: 1 }, { id: 2 }]
+              }
+            }
+          }
+        }
       }
       result = helper.send(:get_response_examples, v)
       expect(result.first).to eq("[")
@@ -329,12 +329,12 @@ RSpec.describe LibOpenApiImport do
     it "handles v3.0 content -> examples without :value key (returns empty string)" do
       v = {
         content: {
-          'application/json': {
+          "application/json": {
             examples: {
-              example1: { summary: "just a summary" },
-            },
-          },
-        },
+              example1: { summary: "just a summary" }
+            }
+          }
+        }
       }
       result = helper.send(:get_response_examples, v)
       expect(result).to eq([""])
@@ -345,9 +345,9 @@ RSpec.describe LibOpenApiImport do
         schema: {
           allOf: [
             { properties: { name: { type: "string" } } },
-            { properties: { id: { type: "integer" } } },
-          ],
-        },
+            { properties: { id: { type: "integer" } } }
+          ]
+        }
       }
       result = helper.send(:get_response_examples, v)
       expect(result).not_to be_empty
@@ -361,10 +361,10 @@ RSpec.describe LibOpenApiImport do
           type: "array",
           items: {
             properties: {
-              name: { type: "string" },
-            },
-          },
-        },
+              name: { type: "string" }
+            }
+          }
+        }
       }
       result = helper.send(:get_response_examples, v)
       expect(result).not_to be_empty
@@ -380,10 +380,10 @@ RSpec.describe LibOpenApiImport do
           items: {
             allOf: [
               { properties: { name: { type: "string" } } },
-              { properties: { age: { type: "integer" } } },
-            ],
-          },
-        },
+              { properties: { age: { type: "integer" } } }
+            ]
+          }
+        }
       }
       result = helper.send(:get_response_examples, v)
       expect(result).not_to be_empty
@@ -396,8 +396,8 @@ RSpec.describe LibOpenApiImport do
       v = {
         schema: {
           type: "array",
-          items: { type: "string" },
-        },
+          items: { type: "string" }
+        }
       }
       result = helper.send(:get_response_examples, v)
       expect(result).to eq(["[\"string\"]"])
@@ -407,9 +407,9 @@ RSpec.describe LibOpenApiImport do
       v = {
         schema: {
           properties: {
-            '@type': { type: "string", example: "Person" },
-          },
-        },
+            "@type": { type: "string", example: "Person" }
+          }
+        }
       }
       result = helper.send(:get_response_examples, v)
       joined = result.join
@@ -424,7 +424,7 @@ RSpec.describe LibOpenApiImport do
 
     it "does not mutate the input hash" do
       v = {
-        schema: { properties: { name: { type: "string" } } },
+        schema: { properties: { name: { type: "string" } } }
       }
       original = v.dup
       helper.send(:get_response_examples, v)
@@ -436,9 +436,9 @@ RSpec.describe LibOpenApiImport do
         schema: {
           properties: {
             id: { type: "integer", readOnly: true },
-            name: { type: "string" },
-          },
-        },
+            name: { type: "string" }
+          }
+        }
       }
       result = helper.send(:get_response_examples, v, true)
       expect(result.join).not_to include("id:")
@@ -494,7 +494,7 @@ RSpec.describe LibOpenApiImport do
     end
 
     it "extracts enum patterns" do
-      result = helper.send(:get_patterns, "status", { enum: ["active", "inactive"] })
+      result = helper.send(:get_patterns, "status", { enum: %w[active inactive] })
       expect(result.first).to include("active|inactive")
     end
 
@@ -525,7 +525,7 @@ RSpec.describe LibOpenApiImport do
     end
 
     it "handles array type with items.enum" do
-      dpv = { type: "array", items: { type: "string", enum: ["a", "b", "c"] } }
+      dpv = { type: "array", items: { type: "string", enum: %w[a b c] } }
       result = helper.send(:get_patterns, "tags", dpv)
       expect(result.first).to include("a|b|c")
     end
@@ -535,9 +535,9 @@ RSpec.describe LibOpenApiImport do
         type: "array",
         items: {
           properties: {
-            status: { enum: ["on", "off"] },
-          },
-        },
+            status: { enum: %w[on off] }
+          }
+        }
       }
       result = helper.send(:get_patterns, "items", dpv)
       expect(result).not_to be_empty
@@ -554,8 +554,8 @@ RSpec.describe LibOpenApiImport do
       dpv = {
         type: "object",
         properties: {
-          city: { minLength: 1, maxLength: 100 },
-        },
+          city: { minLength: 1, maxLength: 100 }
+        }
       }
       result = helper.send(:get_patterns, "address", dpv)
       expect(result).not_to be_empty
@@ -566,8 +566,8 @@ RSpec.describe LibOpenApiImport do
       dpv = {
         type: "object",
         properties: {
-          city: { enum: ["NYC", "LA"] },
-        },
+          city: { enum: %w[NYC LA] }
+        }
       }
       result = helper.send(:get_patterns, "", dpv)
       expect(result).not_to be_empty
@@ -575,7 +575,7 @@ RSpec.describe LibOpenApiImport do
     end
 
     it "handles nullable type arrays (OAS 3.1)" do
-      result = helper.send(:get_patterns, "flag", { type: ["boolean", "null"] })
+      result = helper.send(:get_patterns, "flag", { type: %w[boolean null] })
       expect(result.first).to include("Boolean")
     end
 
@@ -593,7 +593,7 @@ RSpec.describe LibOpenApiImport do
 
   describe "#get_required_data" do
     it "extracts required field names" do
-      body = { required: ["name", "email"], properties: {} }
+      body = { required: %w[name email], properties: {} }
       result = helper.send(:get_required_data, body)
       expect(result).to include(:name)
       expect(result).to include(:email)
@@ -603,9 +603,9 @@ RSpec.describe LibOpenApiImport do
       body = {
         allOf: [
           { required: ["id"], properties: {} },
-          { required: ["name"], properties: {} },
+          { required: ["name"], properties: {} }
         ],
-        properties: {},
+        properties: {}
       }
       result = helper.send(:get_required_data, body)
       expect(result).to include(:id)
@@ -626,10 +626,10 @@ RSpec.describe LibOpenApiImport do
             type: "object",
             required: ["city"],
             properties: {
-              city: { type: "string" },
-            },
-          },
-        },
+              city: { type: "string" }
+            }
+          }
+        }
       }
       result = helper.send(:get_required_data, body)
       expect(result).to include(:address)
@@ -645,9 +645,9 @@ RSpec.describe LibOpenApiImport do
     it "handles allOf items without required key" do
       body = {
         allOf: [
-          { properties: { name: { type: "string" } } },
+          { properties: { name: { type: "string" } } }
         ],
-        properties: {},
+        properties: {}
       }
       result = helper.send(:get_required_data, body)
       expect(result).to be_empty
@@ -754,19 +754,19 @@ RSpec.describe LibOpenApiImport do
         schema: {
           allOf: [
             { properties: { name: { type: "string" } } },
-            { properties: { age: { type: "integer" } } },
-          ],
-        },
+            { properties: { age: { type: "integer" } } }
+          ]
+        }
       }
-      data_examples_all_of, bodies = helper.send(:get_data_all_of_bodies, param)
+      _, bodies = helper.send(:get_data_all_of_bodies, param)
       expect(bodies.size).to eq 2
     end
 
     it "handles non-allOf schemas" do
       param = {
         schema: {
-          properties: { name: { type: "string" } },
-        },
+          properties: { name: { type: "string" } }
+        }
       }
       _data_examples_all_of, bodies = helper.send(:get_data_all_of_bodies, param)
       expect(bodies.size).to eq 1
@@ -775,7 +775,7 @@ RSpec.describe LibOpenApiImport do
     it "handles array input (recursive case)" do
       arr = [
         { properties: { name: { type: "string" } } },
-        { properties: { age: { type: "integer" } } },
+        { properties: { age: { type: "integer" } } }
       ]
       _data_examples_all_of, bodies = helper.send(:get_data_all_of_bodies, arr)
       expect(bodies.size).to eq 2
@@ -788,12 +788,12 @@ RSpec.describe LibOpenApiImport do
             {
               allOf: [
                 { properties: { inner1: { type: "string" } } },
-                { properties: { inner2: { type: "integer" } } },
-              ],
+                { properties: { inner2: { type: "integer" } } }
+              ]
             },
-            { properties: { outer: { type: "boolean" } } },
-          ],
-        },
+            { properties: { outer: { type: "boolean" } } }
+          ]
+        }
       }
       data_examples_all_of, bodies = helper.send(:get_data_all_of_bodies, param)
       expect(data_examples_all_of).to eq true
@@ -807,11 +807,11 @@ RSpec.describe LibOpenApiImport do
             { properties: { simple: { type: "string" } } },
             {
               allOf: [
-                { properties: { nested: { type: "integer" } } },
-              ],
-            },
-          ],
-        },
+                { properties: { nested: { type: "integer" } } }
+              ]
+            }
+          ]
+        }
       }
       data_examples_all_of, bodies = helper.send(:get_data_all_of_bodies, param)
       expect(data_examples_all_of).to eq true
@@ -826,7 +826,7 @@ RSpec.describe LibOpenApiImport do
     end
 
     it "returns first from examples (plural)" do
-      result = OpenApiImport.send(:build_example_value, { examples: ["a", "b"] })
+      result = OpenApiImport.send(:build_example_value, { examples: %w[a b] })
       expect(result).to eq("a")
     end
 
@@ -867,9 +867,9 @@ RSpec.describe LibOpenApiImport do
 
     it "returns populated hash for object type with properties" do
       result = OpenApiImport.send(:build_example_value, {
-        type: "object",
-        properties: { name: { type: "string" }, age: { type: "integer" } },
-      })
+                                    type: "object",
+                                    properties: { name: { type: "string" }, age: { type: "integer" } }
+                                  })
       expect(result).to eq({ name: "string", age: 0 })
     end
 
@@ -879,7 +879,7 @@ RSpec.describe LibOpenApiImport do
     end
 
     it "handles nullable type arrays (OAS 3.1)" do
-      result = OpenApiImport.send(:build_example_value, { type: ["string", "null"] })
+      result = OpenApiImport.send(:build_example_value, { type: %w[string null] })
       expect(result).to eq("string")
     end
 

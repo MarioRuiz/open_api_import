@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
-require 'optparse'
-require 'open_api_import'
+require "optparse"
+require "open_api_import"
 
 options = {
   name_for_module: :path
@@ -72,7 +72,7 @@ if options.key?(:create_files)
 end
 
 filename = ARGV.pop
-if filename.to_s == ''
+if filename.to_s == ""
   puts optparse
   puts "** Need to specify at least a file to import."
 else

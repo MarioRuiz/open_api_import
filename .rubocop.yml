@@ -1,10 +1,11 @@
 AllCops:
-  TargetRubyVersion: 3.1
+  TargetRubyVersion: 3.0
   NewCops: enable
   SuggestExtensions: false
   Exclude:
     - 'spec/fixtures/**/*'
     - 'vendor/**/*'
+    - 'tmp/**/*'
 
 Style/Documentation:
   Enabled: false
@@ -22,22 +23,31 @@ Metrics/MethodLength:
   Max: 400
   Exclude:
     - 'spec/**/*'
+    - 'lib/open_api_import/open_api_import.rb'
 
 Metrics/AbcSize:
   Max: 500
   Exclude:
     - 'spec/**/*'
+    - 'lib/open_api_import/open_api_import.rb'
 
 Metrics/CyclomaticComplexity:
   Max: 80
+  Exclude:
+    - 'lib/open_api_import/open_api_import.rb'
 
 Metrics/PerceivedComplexity:
   Max: 80
+  Exclude:
+    - 'lib/open_api_import/open_api_import.rb'
 
 Metrics/BlockLength:
   Exclude:
     - 'spec/**/*'
     - 'Rakefile'
+    - 'bin/open_api_import'
+    - 'lib/open_api_import/open_api_import.rb'
+    - 'lib/open_api_import/get_examples.rb'
 
 Metrics/ClassLength:
   Max: 800
@@ -83,3 +93,32 @@ Lint/SuppressedException:
 
 Style/RescueStandardError:
   Enabled: false
+
+Style/OptionalBooleanParameter:
+  Enabled: false
+
+Metrics/BlockNesting:
+  Enabled: false
+
+Metrics/ParameterLists:
+  Enabled: false
+
+Lint/DuplicateBranch:
+  Enabled: false
+
+Lint/UnreachableLoop:
+  Enabled: false
+
+Lint/EmptyFile:
+  Exclude:
+    - 'spec/open_api_import/utils/open_api_import_utils_spec.rb'
+
+Gemspec/DevelopmentDependencies:
+  Enabled: false
+
+Gemspec/RequiredRubyVersion:
+  Enabled: false
+
+Security/Eval:
+  Exclude:
+    - 'spec/**/*'

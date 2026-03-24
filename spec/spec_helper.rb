@@ -1,8 +1,7 @@
-
-require 'coveralls'
+require "coveralls"
 Coveralls.wear!
 
-require 'open_api_import'
+require "open_api_import"
 
 RSpec.configure do |config|
   config.expect_with :rspec do |expectations|

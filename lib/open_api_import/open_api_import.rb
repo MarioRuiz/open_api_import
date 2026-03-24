@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 using OpenApiImportStringExt
 
 class OpenApiImport
@@ -50,49 +52,48 @@ class OpenApiImport
         raise "The file #{file_to_convert} doesn't exist"
       end
 
-      file_errors = file_to_convert + ".errors.log"
-      File.delete(file_errors) if File.exist?(file_errors)
+      file_errors = "#{file_to_convert}.errors.log"
+      FileUtils.rm_f(file_errors)
       import_errors = ""
       required_constants = []
 
       begin
         definition = OasParser::Definition.resolve(swagger_file)
-      rescue StandardError => stack
+      rescue StandardError => e
         message = "There was a problem parsing the Open Api document using the oas_parser_reborn gem. The execution was aborted.\n"
         message += "Visit the github for oas_parser_reborn gem for bugs and more info: https://github.com/MarioRuiz/oas_parser_reborn\n"
-        message += "Error: #{stack.message}"
+        message += "Error: #{e.message}"
         @logger.fatal message
-        @logger.fatal stack.backtrace.join("\n")
+        @logger.fatal e.backtrace.join("\n")
         raise ParseError, message
       end
 
       raw = definition.raw.deep_symbolize_keys
 
-      if raw.key?(:openapi) && (raw[:openapi].to_f > 0)
+      if raw.key?(:openapi) && raw[:openapi].to_f.positive?
         raw[:swagger] = raw[:openapi]
       end
       if raw[:swagger].to_f < 2.0
         raise "Unsupported Swagger version. Only versions >= 2.0 are valid."
       end
 
-      base_host = ""
       base_path = ""
 
-      base_host = raw[:host] if raw.key?(:host)
+      raw[:host] if raw.key?(:host)
       base_path = raw[:basePath] if raw.key?(:basePath)
       module_name = raw[:info][:title].camel_case
       module_version = "V#{raw[:info][:version].to_s.snake_case}"
 
       output = []
       output_header = []
-      output_header << "#" * 50
+      output_header << ("#" * 50)
       output_header << "# #{raw[:info][:title]}"
       output_header << "# version: #{raw[:info][:version]}"
       output_header << "# description: "
       raw[:info][:description].to_s.split("\n").each do |d|
         output_header << "#     #{d}" unless d == ""
       end
-      output_header << "#" * 50
+      output_header << ("#" * 50)
 
       output_header << "module Swagger"
       output_header << "module #{module_name}"
@@ -107,7 +108,7 @@ class OpenApiImport
         raw = path.raw.deep_symbolize_keys
 
         if raw.key?(:parameters)
-          raw.each do |met, cont|
+          raw.each_key do |met|
             if met != :parameters
               if raw[met].key?(:parameters)
                 raw[met][:parameters] = raw[met][:parameters] + raw[:parameters]
@@ -140,12 +141,12 @@ class OpenApiImport
             cont[:operationId] = "undefined" unless cont.key?(:operationId)
 
             if create_method_name == :path
-              method_name = (met.to_s + "_" + path.path.to_s).snake_case
+              method_name = "#{met}_#{path.path}".snake_case
               method_name.chop! if method_name[-1] == "_"
             elsif create_method_name == :operation_id
-              if (name_for_module == :tags or name_for_module == :tags_file) and cont.key?(:tags) and cont[:tags].is_a?(Array) and cont[:tags].size > 0
+              if ((name_for_module == :tags) || (name_for_module == :tags_file)) && cont.key?(:tags) && cont[:tags].is_a?(Array) && cont[:tags].size.positive?
                 metnametmp = cont[:operationId].gsub(/^#{cont[:tags].join}[\s_]*/, "")
-                cont[:tags].join.split(" ").each do |tag|
+                cont[:tags].join.split.each do |tag|
                   metnametmp = metnametmp.gsub(/^#{tag}[\s_]*/i, "")
                 end
                 metnametmp = met if metnametmp == ""
@@ -153,35 +154,31 @@ class OpenApiImport
                 metnametmp = cont[:operationId]
               end
               method_name = metnametmp.to_s.snake_case
-            else
-              if (name_for_module == :tags or name_for_module == :tags_file) and cont.key?(:tags) and cont[:tags].is_a?(Array) and cont[:tags].size > 0
-                method_name = cont[:operationId].gsub(/^#{cont[:tags].join}[\s_]*/, "")
-                cont[:tags].join.split(" ").each do |tag|
-                  method_name = method_name.gsub(/^#{tag}[\s_]*/i, "")
-                end
-                method_name = met if method_name == ""
-              else
-                method_name = cont[:operationId]
+            elsif ((name_for_module == :tags) || (name_for_module == :tags_file)) && cont.key?(:tags) && cont[:tags].is_a?(Array) && cont[:tags].size.positive?
+              method_name = cont[:operationId].gsub(/^#{cont[:tags].join}[\s_]*/, "")
+              cont[:tags].join.split.each do |tag|
+                method_name = method_name.gsub(/^#{tag}[\s_]*/i, "")
               end
+              method_name = met if method_name == ""
+            else
+              method_name = cont[:operationId]
             end
             path_txt = path.path.dup.to_s
             if [:path, :path_file, :tags, :tags_file].include?(name_for_module)
               old_module_requests = module_requests
               if [:path, :path_file].include?(name_for_module)
-                path_requests = path_txt.gsub(/^\/v[\d\.]*\//i, "")
-                path_requests = path_requests.gsub(/^\/[\d\.]*\//i, "")
+                path_requests = path_txt.gsub(%r{^/v[\d\.]*/}i, "")
+                path_requests = path_requests.gsub(%r{^/[\d\.]*/}i, "")
                 if (path_requests == path_txt) && (path_txt.scan("/").size == 1)
                   module_requests = "Root"
                 else
                   res_path = path_requests.scan(/(\w+)/)
                   module_requests = res_path[0][0].camel_case
                 end
+              elsif cont.key?(:tags) && cont[:tags].is_a?(Array) && cont[:tags].size.positive?
+                module_requests = cont[:tags].join(" ").camel_case
               else
-                if cont.key?(:tags) and cont[:tags].is_a?(Array) and cont[:tags].size > 0
-                  module_requests = cont[:tags].join(" ").camel_case
-                else
-                  module_requests = "Undefined"
-                end
+                module_requests = "Undefined"
               end
 
               if /^(?<vers>v\d+)/i =~ method_name
@@ -190,10 +187,10 @@ class OpenApiImport
               end
 
               if old_module_requests != module_requests
-                output << "end" unless old_module_requests == "" or name_for_module == :path_file or name_for_module == :tags_file
-                if name_for_module == :path or name_for_module == :tags
+                output << "end" unless (old_module_requests == "") || (name_for_module == :path_file) || (name_for_module == :tags_file)
+                if (name_for_module == :path) || (name_for_module == :tags)
                   output << "module #{module_requests}"
-                else #:path_file, :tags_file
+                else # :path_file, :tags_file
                   if old_module_requests != ""
                     unless files.key?(old_module_requests)
                       files[old_module_requests] = []
@@ -209,53 +206,52 @@ class OpenApiImport
             output << ""
             output << "# operationId: #{cont[:operationId]}, method: #{met}"
             output << "# summary: #{cont[:summary].split("\n").join("\n#          ")}" if cont.key?(:summary)
-            if !cont[:description].to_s.split("\n").empty?
+            if cont[:description].to_s.split("\n").empty?
+              output << "# description: #{cont[:description]}"
+            else
               output << "# description: "
               cont[:description].to_s.split("\n").each do |d|
                 output << "#     #{d}" unless d == ""
               end
-            else
-              output << "# description: #{cont[:description]}"
             end
 
             mock_example = []
 
             if include_responses && cont.key?(:responses) && cont[:responses].is_a?(Hash)
               cont[:responses].each do |k, v|
-                response_example = []
                 response_example = get_response_examples(v)
 
                 data_pattern += get_patterns("", v[:schema]) if v.key?(:schema)
                 data_pattern.uniq!
                 resp_description = v[:description].to_s.gsub("'", %q(\\\'))
-                if !response_example.empty?
+                if response_example.empty?
+                  responses << "'#{k}': { message: '#{resp_description}'}, "
+                else
                   responses << "'#{k}': { "
                   responses << "message: '#{resp_description}', "
                   responses << "data: "
                   responses << response_example
                   responses << "},"
-                  if mock_response and mock_example.size == 0
+                  if mock_response && mock_example.empty?
                     mock_example << "code: '#{k}',"
                     mock_example << "message: '#{resp_description}',"
                     mock_example << "data: "
                     mock_example << response_example
                   end
-                else
-                  responses << "'#{k}': { message: '#{resp_description}'}, "
                 end
               end
             end
 
-            if cont.key?(:requestBody) and cont[:requestBody].key?(:content) and
-               cont[:requestBody][:content].key?(:'application/json') and cont[:requestBody][:content][:'application/json'].key?(:schema)
+            if cont.key?(:requestBody) && cont[:requestBody].key?(:content) &&
+               cont[:requestBody][:content].key?(:"application/json") && cont[:requestBody][:content][:"application/json"].key?(:schema)
               cont[:parameters] = [] unless cont.key?(:parameters)
-              cont[:parameters] << { in: "body", schema: cont[:requestBody][:content][:'application/json'][:schema] }
+              cont[:parameters] << { in: "body", schema: cont[:requestBody][:content][:"application/json"][:schema] }
             end
 
             data_examples_all_of = false
             if cont.key?(:parameters) && cont[:parameters].is_a?(Array)
               cont[:parameters].each do |p|
-                if p.keys.include?(:schema) and p[:schema].include?(:type)
+                if p.keys.include?(:schema) && p[:schema].include?(:type)
                   type = p[:schema][:type]
                   type = Array(type).reject { |t| t == "null" }.first if type.is_a?(Array)
                 elsif p.keys.include?(:type)
@@ -288,13 +284,13 @@ class OpenApiImport
                   params_required << p[:name] if p[:required].to_s == "true"
                   @logger.warn "Description key is missing for #{met} #{path.path} #{p[:name]}" if p[:description].nil?
                   description_parameters << "#    #{p[:name]}: (#{type}) #{"(required)" if p[:required].to_s == "true"} #{p[:description].to_s.split("\n").join("\n#\t\t\t")}"
-                elsif p[:in] == "formData" or p[:in] == "formdata"
+                elsif (p[:in] == "formData") || (p[:in] == "formdata")
                   description_parameters << "#    #{p[:name]}: (#{p[:type]}) #{p[:description].split("\n").join("\n#\t\t\t")}"
 
                   case p[:type]
                   when /^string$/i
                     data_form << "#{p[:name]}: ''"
-                    data_form_hash[p[:name].to_sym] = ''
+                    data_form_hash[p[:name].to_sym] = ""
                   when /^boolean$/i
                     data_form << "#{p[:name]}: true"
                     data_form_hash[p[:name].to_sym] = true
@@ -315,7 +311,7 @@ class OpenApiImport
                       bodies = p[:schema][:anyOf]
                     elsif p[:schema].key?(:allOf)
                       data_examples_all_of, bodies = get_data_all_of_bodies(p)
-                      bodies.unshift(p[:schema]) if p[:schema].key?(:required) or p.key?(:required)
+                      bodies.unshift(p[:schema]) if p[:schema].key?(:required) || p.key?(:required)
                       data_examples_all_of = true
                     else
                       bodies = [p[:schema]]
@@ -327,7 +323,7 @@ class OpenApiImport
                     bodies.each do |body|
                       data_required += get_required_data(body)
                       all_properties = []
-                      all_properties << body[:properties] if body.keys.include?(:properties) and body[:properties].size > 0
+                      all_properties << body[:properties] if body.keys.include?(:properties) && body[:properties].size.positive?
                       if body.key?(:allOf)
                         body[:allOf].each do |item|
                           all_properties << item[:properties] if item.key?(:properties)
@@ -335,30 +331,28 @@ class OpenApiImport
                       end
 
                       all_properties.each do |props|
-                        props.each { |dpk, dpv|
+                        props.each do |dpk, dpv|
                           if dpv.keys.include?(:example)
-                            if dpv[:example].is_a?(Array) and dpv.type != "array"
+                            if dpv[:example].is_a?(Array) && (dpv.type != "array")
                               valv = dpv[:example][0]
                             else
                               valv = dpv[:example].to_s
                             end
-                          else
-                            if dpv.type == "object"
-                              if dpv.key?(:properties)
-                                valv = get_examples(dpv[:properties], :key_value, true).join("\n")
-                              else
-                                valv = "{}"
-                              end
-                            elsif dpv.type == "array"
-                              if dpv.key?(:items)
-                                valv = get_examples({ dpk => dpv }, :only_value)
-                                valv = valv.join("\n")
-                              else
-                                valv = "[]"
-                              end
+                          elsif dpv.type == "object"
+                            if dpv.key?(:properties)
+                              valv = get_examples(dpv[:properties], :key_value, true).join("\n")
                             else
-                              valv = ""
+                              valv = "{}"
                             end
+                          elsif dpv.type == "array"
+                            if dpv.key?(:items)
+                              valv = get_examples({ dpk => dpv }, :only_value)
+                              valv = valv.join("\n")
+                            else
+                              valv = "[]"
+                            end
+                          else
+                            valv = ""
                           end
 
                           if dpv.keys.include?(:description)
@@ -379,7 +373,7 @@ class OpenApiImport
                             end
                           end
 
-                          if dpv.keys.include?(:readOnly) and dpv[:readOnly] == true
+                          if dpv.keys.include?(:readOnly) && (dpv[:readOnly] == true)
                             data_read_only << dpk
                           end
                           if dpv.keys.include?(:default)
@@ -394,9 +388,9 @@ class OpenApiImport
 
                           params_data_hash[dpk] = build_example_value(dpv)
 
-                          if dpv.key?(:type) and dpv[:type] != "array"
+                          if dpv.key?(:type) && (dpv[:type] != "array")
                             params_data << get_examples({ dpk => dpv }, :only_value, true).join
-                            params_data[-1].chop!.chop! if params_data[-1].to_s[-2..-1] == ", "
+                            params_data[-1].chop!.chop! if params_data[-1].to_s[-2..] == ", "
                             params_data.pop if params_data[-1].match?(/^\s*$/im)
                           else
                             if valv.to_s == ""
@@ -406,14 +400,14 @@ class OpenApiImport
                             end
                             params_data << "#{dpk}: #{valv}"
                           end
-                        }
-                        if params_data.size > 0
-                          if data_examples_all_of == true and data_examples.size > 0
+                        end
+                        if params_data.size.positive?
+                          if (data_examples_all_of == true) && data_examples.size.positive?
                             data_examples[0] += params_data
                           else
                             data_examples << params_data
                           end
-                          if data_examples_all_of == true and data_examples_hashes.size > 0
+                          if (data_examples_all_of == true) && data_examples_hashes.size.positive?
                             data_examples_hashes[0].merge!(params_data_hash)
                           else
                             data_examples_hashes << params_data_hash.dup
@@ -430,7 +424,7 @@ class OpenApiImport
                     end
                   end
                 elsif p[:in] == "header"
-                  #todo: see how we can treat those cases
+                  # TODO: see how we can treat those cases
                 else
                   puts "! not imported data with :in:#{p[:in]} => #{p.inspect}"
                 end
@@ -453,15 +447,13 @@ class OpenApiImport
                         required_constants << pr.to_s.snake_case.upcase
                       end
                     end
-                  else
-                    if params_query.include?(pr)
-                      if create_method_name == :operationId
-                        path_txt += "#{pr}=\#{#{pr}}&"
-                        params << "#{pr}"
-                      else
-                        path_txt += "#{pr}=\#{#{pr.to_s.snake_case}}&"
-                        params << "#{pr.to_s.snake_case}"
-                      end
+                  elsif params_query.include?(pr)
+                    if create_method_name == :operationId
+                      path_txt += "#{pr}=\#{#{pr}}&"
+                      params << pr.to_s
+                    else
+                      path_txt += "#{pr}=\#{#{pr.to_s.snake_case}}&"
+                      params << pr.to_s.snake_case.to_s
                     end
                   end
                 end
@@ -479,12 +471,12 @@ class OpenApiImport
               end
             end
 
-            if description_parameters.size > 0
+            if description_parameters.size.positive?
               output << "# parameters description: "
               output << description_parameters.uniq
             end
 
-            if path_txt.scan(/[^#]{\w+}/).size > 0
+            if path_txt.scan(/[^#]{\w+}/).size.positive?
               paramst = []
               prms = path_txt.scan(/[^#]{(\w+)}/)
               prms.each do |p|
@@ -543,7 +535,7 @@ class OpenApiImport
                   data_ex = {}
                   @logger.warn "Error processing data examples: #{met} for path: #{path.path} => #{e.message}"
                 end
-                if (data_required.grep(/\./)).empty?
+                if data_required.grep(/\./).empty?
                   reqdata = filter(data_ex, data_required)
                 else
                   reqdata = filter(data_ex, data_required, true)
@@ -555,15 +547,15 @@ class OpenApiImport
                   output += phsd
                 end
               end
-              unless data_read_only.empty? or !data_required.empty?
+              unless data_read_only.empty? || !data_required.empty?
                 reqdata = []
                 data_examples[0].each do |edata|
                   read_only = false
                   data_read_only.each do |rdata|
-                    if edata.scan(/^#{rdata}:/).size > 0
+                    if edata.scan(/^#{rdata}:/).size.positive?
                       read_only = true
                       break
-                    elsif edata.scan(/:/).size == 0
+                    elsif edata.scan(":").empty?
                       break
                     end
                   end
@@ -608,19 +600,19 @@ class OpenApiImport
       end
       output_footer = []
 
-      output_footer << "end" unless (module_requests == "") && ([:path, :path_file, :tags, :tags_file].include?(name_for_module))
+      output_footer << "end" unless (module_requests == "") && [:path, :path_file, :tags, :tags_file].include?(name_for_module)
       output_footer << "end" << "end" << "end"
 
       generated_files = {}
 
-      if files.size == 0 and !create_constants
+      if files.empty? && !create_constants
         output = output_header + output + output_footer
         output_txt = output.join("\n")
-        requests_file_path = file_to_convert + ".rb"
+        requests_file_path = "#{file_to_convert}.rb"
         if return_data
           generated_files[requests_file_path] = output_txt
         else
-          File.open(requests_file_path, "w") { |file| file.write(output_txt) }
+          File.write(requests_file_path, output_txt)
           format_and_check_file(requests_file_path, @logger)
           message = "** Requests file: #{swagger_file}.rb that contains the code of the requests after importing the Swagger file"
           puts message unless silent
@@ -639,22 +631,22 @@ class OpenApiImport
         files.each do |mod, out_mod|
           output = output_header + out_mod + output_footer
           output_txt = output.join("\n")
-          requests_file_path = file_to_convert + "_" + mod + ".rb"
+          requests_file_path = "#{file_to_convert}_#{mod}.rb"
           requires_txt += "require_relative '#{File.basename(swagger_file)}_#{mod}'\n"
           if return_data
             generated_files[requests_file_path] = output_txt
           else
-            File.open(requests_file_path, "w") { |file| file.write(output_txt) }
+            File.write(requests_file_path, output_txt)
             format_and_check_file(requests_file_path, @logger)
-            display_path = swagger_file + "_" + mod + ".rb"
+            display_path = "#{swagger_file}_#{mod}.rb"
             message = "  - #{display_path}"
             puts message unless silent
             @logger.info message
           end
         end
 
-        requests_file_path = file_to_convert + ".rb"
-        if required_constants.size > 0
+        requests_file_path = "#{file_to_convert}.rb"
+        if required_constants.size.positive?
           rconsts = "# Required constants\n"
           required_constants.uniq!
           required_constants.each do |rq|
@@ -668,7 +660,7 @@ class OpenApiImport
         if return_data
           generated_files[requests_file_path] = rconsts + requires_txt
         else
-          File.open(requests_file_path, "w") { |file| file.write(rconsts + requires_txt) }
+          File.write(requests_file_path, rconsts + requires_txt)
           format_and_check_file(requests_file_path, @logger)
           message = "** File that contains all the requires for all Request files: \n"
           message += "   - #{swagger_file}.rb "
@@ -681,27 +673,27 @@ class OpenApiImport
 
       begin
         load File.expand_path(requests_file_path)
-      rescue StandardError => stack
-        import_errors += "\n\nResult evaluating the ruby file generated: \n" + stack.to_s
+      rescue StandardError => e
+        import_errors += "\n\nResult evaluating the ruby file generated: \n#{e}"
       end
 
-      if import_errors.to_s != ""
-        File.open(file_errors, "w") { |file| file.write(import_errors) }
+      if import_errors.to_s == ""
+        true
+      else
+        File.write(file_errors, import_errors)
         message = "* It seems there was a problem importing the Swagger file #{swagger_file}\n"
         message += "* Take a look at the detected errors at #{file_errors}\n"
         warn message
         @logger.fatal message
-        return false
-      else
-        return true
+        false
       end
     rescue ParseError
       raise
-    rescue StandardError => stack
-      puts stack.message
-      @logger.fatal stack.message
-      @logger.fatal stack.backtrace
-      puts stack.backtrace
+    rescue StandardError => e
+      puts e.message
+      @logger.fatal e.message
+      @logger.fatal e.backtrace
+      puts e.backtrace
     end
   end
 
