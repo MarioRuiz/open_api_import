@@ -4,13 +4,13 @@ RSpec.describe OpenApiImport do
   describe "#from" do
     it "creates a log file if swagger_file is a valid string for a file name" do
       file_name = "example.yaml"
-      File.delete("#{file_name}_open_api_import.log") if File.exist?("#{file_name}_open_api_import.log")
+      FileUtils.rm_f("#{file_name}_open_api_import.log")
       OpenApiImport.from file_name
       expect(File.exist?("#{file_name}_open_api_import.log")).to eq true
-      expect(File.read("#{file_name}_open_api_import.log")).to match /swagger_file:\s#{file_name}/
+      expect(File.read("#{file_name}_open_api_import.log")).to match(/swagger_file:\s#{file_name}/)
     end
 
-    it 'doesn\'t create a log file if swagger_file is not a valid string for a file name' do
+    it "doesn't create a log file if swagger_file is not a valid string for a file name" do
       file_name = "exa%$#@{}//&&[]`mple.yaml"
       OpenApiImport.from file_name
       expect(File.exist?("#{file_name}_open_api_import.log")).to eq false
@@ -18,15 +18,15 @@ RSpec.describe OpenApiImport do
 
     it "logs error when swagger version file is lower than supported" do
       file_name = "./spec/fixtures/wrong/petstore-minimal.yaml"
-      File.delete("#{file_name}_open_api_import.log") if File.exist?("#{file_name}_open_api_import.log")
+      FileUtils.rm_f("#{file_name}_open_api_import.log")
       OpenApiImport.from file_name
       expect(File.exist?("#{file_name}_open_api_import.log")).to eq true
-      expect(File.read("#{file_name}_open_api_import.log")).to match /Unsupported Swagger version/
+      expect(File.read("#{file_name}_open_api_import.log")).to match(/Unsupported Swagger version/)
     end
 
     it "creates a requests file" do
       file_name = "./spec/fixtures/v2.0/yaml/petstore-minimal.yaml"
-      File.delete("#{file_name}.rb") if File.exist?("#{file_name}.rb")
+      FileUtils.rm_f("#{file_name}.rb")
       OpenApiImport.from file_name
       expect(File.exist?("#{file_name}.rb")).to eq true
     end
@@ -34,19 +34,19 @@ RSpec.describe OpenApiImport do
     it "creates the module names correctly from the yaml swagger file" do
       file_name = "./spec/fixtures/v2.0/yaml/petstore-minimal.yaml"
       OpenApiImport.from file_name
-      expect(File.read("#{file_name}.rb")).to match /module\sSwagger\s+module\sSwaggerPetstore\s+module\sV1_0_0/
+      expect(File.read("#{file_name}.rb")).to match(/module\sSwagger\s+module\sSwaggerPetstore\s+module\sV1_0_0/)
     end
 
     it "creates the module names correctly from the json swagger file" do
       file_name = "./spec/fixtures/v2.0/json/petstore-minimal.json"
       OpenApiImport.from file_name
-      expect(File.read("#{file_name}.rb")).to match /module\sSwagger\s+module\sSwaggerPetstore\s+module\sV1_0_0/
+      expect(File.read("#{file_name}.rb")).to match(/module\sSwagger\s+module\sSwaggerPetstore\s+module\sV1_0_0/)
     end
 
     it "creates the module names correctly when name_for_module is :fixed" do
       file_name = "./spec/fixtures/v2.0/yaml/petstore-minimal.yaml"
       OpenApiImport.from file_name, name_for_module: :fixed
-      expect(File.read("#{file_name}.rb")).to match /module\sSwagger\s+module\sSwaggerPetstore\s+module\sV1_0_0\s+module\sRequests/
+      expect(File.read("#{file_name}.rb")).to match(/module\sSwagger\s+module\sSwaggerPetstore\s+module\sV1_0_0\s+module\sRequests/)
     end
 
     it "creates the module names correctly when name_for_module is :path" do
@@ -82,16 +82,16 @@ RSpec.describe OpenApiImport do
     it "creates the module names correctly when name_for_module is :path_file" do
       file_name = "./spec/fixtures/v2.0/yaml/petstore-simple.yaml"
       OpenApiImport.from file_name, name_for_module: :path_file
-      expect(File.read("#{file_name}_Pets.rb")).to match /module\sPets$/
-      expect(File.read("#{file_name}_Root.rb")).to match /module\sRoot$/
+      expect(File.read("#{file_name}_Pets.rb")).to match(/module\sPets$/)
+      expect(File.read("#{file_name}_Root.rb")).to match(/module\sRoot$/)
     end
 
     it "creates the module names correctly when name_for_module is :tags_file" do
       file_name = "./spec/fixtures/v2.0/yaml/uber.yaml"
       OpenApiImport.from file_name, name_for_module: :tags_file
-      expect(File.read("#{file_name}_Products.rb")).to match /module\sProducts$/
-      expect(File.read("#{file_name}_Estimates.rb")).to match /module\sEstimates$/
-      expect(File.read("#{file_name}_User.rb")).to match /module\sUser$/
+      expect(File.read("#{file_name}_Products.rb")).to match(/module\sProducts$/)
+      expect(File.read("#{file_name}_Estimates.rb")).to match(/module\sEstimates$/)
+      expect(File.read("#{file_name}_User.rb")).to match(/module\sUser$/)
     end
 
     it "creates a file that requires all request files when name_for_module is :path_file" do
@@ -115,12 +115,12 @@ RSpec.describe OpenApiImport do
       file_name = "./spec/fixtures/wrong/petstore-minimal_not_supported_method.yaml"
       OpenApiImport.from file_name
       expect(File.exist?("#{file_name}_open_api_import.log")).to eq true
-      expect(File.read("#{file_name}_open_api_import.log")).to match /Not imported method: head for path: /
+      expect(File.read("#{file_name}_open_api_import.log")).to match(/Not imported method: head for path: /)
     end
 
     it "creates the name of the method using the http method and the path when create_method_name is :path" do
       file_name = "./spec/fixtures/v2.0/yaml/petstore-minimal.yaml"
-      File.delete("#{file_name}.rb") if File.exist?("#{file_name}.rb")
+      FileUtils.rm_f("#{file_name}.rb")
       OpenApiImport.from file_name, create_method_name: :path
       expect(File.exist?("#{file_name}.rb")).to eq true
       expect(File.read("#{file_name}.rb")).to include("def self.get_pets(")
@@ -128,7 +128,7 @@ RSpec.describe OpenApiImport do
 
     it "creates the name of the method using the operationId in snake_case when create_method_name is :operation_id" do
       file_name = "./spec/fixtures/v2.0/yaml/petstore-simple.yaml"
-      File.delete("#{file_name}.rb") if File.exist?("#{file_name}.rb")
+      FileUtils.rm_f("#{file_name}.rb")
       OpenApiImport.from file_name, create_method_name: :operation_id
       expect(File.exist?("#{file_name}.rb")).to eq true
       expect(File.read("#{file_name}.rb")).to include("def self.find_pets(")
@@ -136,7 +136,7 @@ RSpec.describe OpenApiImport do
 
     it "creates the name of the method using the operationId like it is when create_method_name is :operationId" do
       file_name = "./spec/fixtures/v2.0/yaml/petstore-simple.yaml"
-      File.delete("#{file_name}.rb") if File.exist?("#{file_name}.rb")
+      FileUtils.rm_f("#{file_name}.rb")
       OpenApiImport.from file_name, create_method_name: :operationId
       expect(File.exist?("#{file_name}.rb")).to eq true
       expect(File.read("#{file_name}.rb")).to include("def self.findPets(")
@@ -144,7 +144,7 @@ RSpec.describe OpenApiImport do
 
     it 'creates the name of the method using the default "undefined" when no operationId supplied' do
       file_name = "./spec/fixtures/v2.0/yaml/petstore-minimal.yaml"
-      File.delete("#{file_name}.rb") if File.exist?("#{file_name}.rb")
+      FileUtils.rm_f("#{file_name}.rb")
       OpenApiImport.from file_name, create_method_name: :operation_id
       expect(File.exist?("#{file_name}.rb")).to eq true
       expect(File.read("#{file_name}.rb")).to include("def self.undefined(")
@@ -152,7 +152,7 @@ RSpec.describe OpenApiImport do
 
     it "creates all end points and http methods" do
       file_name = "./spec/fixtures/v2.0/yaml/petstore-simple.yaml"
-      File.delete("#{file_name}.rb") if File.exist?("#{file_name}.rb")
+      FileUtils.rm_f("#{file_name}.rb")
       OpenApiImport.from file_name, create_method_name: :operation_id
       expect(File.exist?("#{file_name}.rb")).to eq true
       content = File.read("#{file_name}.rb")
@@ -164,7 +164,7 @@ RSpec.describe OpenApiImport do
 
     it "creates module Root when no folder in path" do
       file_name = "./spec/fixtures/v2.0/yaml/petstore-simple.yaml"
-      File.delete("#{file_name}.rb") if File.exist?("#{file_name}.rb")
+      FileUtils.rm_f("#{file_name}.rb")
       OpenApiImport.from file_name, create_method_name: :operation_id
       expect(File.exist?("#{file_name}.rb")).to eq true
       content = File.read("#{file_name}.rb")
@@ -173,7 +173,7 @@ RSpec.describe OpenApiImport do
 
     it "creates module with name of folder in path" do
       file_name = "./spec/fixtures/v2.0/yaml/uber.yaml"
-      File.delete("#{file_name}.rb") if File.exist?("#{file_name}.rb")
+      FileUtils.rm_f("#{file_name}.rb")
       OpenApiImport.from file_name, create_method_name: :operation_id
       expect(File.exist?("#{file_name}.rb")).to eq true
       content = File.read("#{file_name}.rb")
@@ -182,7 +182,7 @@ RSpec.describe OpenApiImport do
 
     it "adds info in comments: operationId, method, summary, description and parameters" do
       file_name = "./spec/fixtures/v2.0/yaml/uber.yaml"
-      File.delete("#{file_name}.rb") if File.exist?("#{file_name}.rb")
+      FileUtils.rm_f("#{file_name}.rb")
       OpenApiImport.from file_name, create_method_name: :operation_id
       expect(File.exist?("#{file_name}.rb")).to eq true
       content = File.read("#{file_name}.rb")
@@ -194,7 +194,7 @@ RSpec.describe OpenApiImport do
 
     it "adds method key on request hash" do
       file_name = "./spec/fixtures/v2.0/yaml/petstore-simple.yaml"
-      File.delete("#{file_name}.rb") if File.exist?("#{file_name}.rb")
+      FileUtils.rm_f("#{file_name}.rb")
       OpenApiImport.from file_name, create_method_name: :operation_id
       expect(File.exist?("#{file_name}.rb")).to eq true
       content = File.read("#{file_name}.rb")
@@ -206,7 +206,7 @@ RSpec.describe OpenApiImport do
 
     it "adds name key on request hash" do
       file_name = "./spec/fixtures/v2.0/yaml/petstore-simple.yaml"
-      File.delete("#{file_name}.rb") if File.exist?("#{file_name}.rb")
+      FileUtils.rm_f("#{file_name}.rb")
       OpenApiImport.from file_name, create_method_name: :operation_id
       expect(File.exist?("#{file_name}.rb")).to eq true
       content = File.read("#{file_name}.rb")
@@ -219,19 +219,19 @@ RSpec.describe OpenApiImport do
     it "detects version on method_name and add it to module" do
       file_name = "./spec/fixtures/v3.0/petstore_with_version.yaml"
       OpenApiImport.from file_name
-      expect(File.read("#{file_name}.rb")).to match /module\sV1Pets/
+      expect(File.read("#{file_name}.rb")).to match(/module\sV1Pets/)
     end
 
     it "detects version on method_name and remove it" do
       file_name = "./spec/fixtures/v3.0/petstore_with_version.yaml"
       OpenApiImport.from file_name
-      expect(File.read("#{file_name}.rb")).to match /def\sself\.list_pets/
+      expect(File.read("#{file_name}.rb")).to match(/def\sself\.list_pets/)
     end
 
     it "adds constants if create_constants" do
       file_name = "./spec/fixtures/v2.0/yaml/uber.yaml"
-      File.delete("#{file_name}.rb") if File.exist?("#{file_name}.rb")
-      File.delete("#{file_name}_Root.rb") if File.exist?("#{file_name}_Root.rb")
+      FileUtils.rm_f("#{file_name}.rb")
+      FileUtils.rm_f("#{file_name}_Root.rb")
       OpenApiImport.from file_name, create_method_name: :path, create_constants: true
       expect(File.exist?("#{file_name}.rb")).to eq true
       content = File.read("#{file_name}.rb")
@@ -242,7 +242,7 @@ RSpec.describe OpenApiImport do
 
     it 'converts patterns from \\x to \\u' do
       file_name = "./spec/fixtures/v2.0/yaml/petstore.yaml"
-      File.delete("#{file_name}.rb") if File.exist?("#{file_name}.rb")
+      FileUtils.rm_f("#{file_name}.rb")
       OpenApiImport.from file_name, create_method_name: :operation_id
       expect(File.exist?("#{file_name}.rb")).to eq true
       content = File.read("#{file_name}.rb")

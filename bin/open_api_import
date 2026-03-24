@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
-require 'optparse'
-require 'open_api_import'
+require "optparse"
+require "open_api_import"
 
 options = {
   name_for_module: :path
@@ -8,12 +8,17 @@ options = {
 
 optparse = OptionParser.new do |opts|
   opts.banner = "Usage: open_api_import [open_api_file] [options]\n"
-  opts.banner+= "Import a Swagger or Open API file and create a Ruby Request Hash file including all requests and responses.\n"
-  opts.banner+= "More info: https://github.com/MarioRuiz/open_api_import\n\n"
-  opts.banner+= "In case no options supplied: \n"
-  opts.banner+= "  * It will be used the value of operation_id on snake_case for the name of the methods\n"
-  opts.banner+= "  * It will be used the first folder of the path to create the module name\n"
-  
+  opts.banner += "Import a Swagger or Open API file and create a Ruby Request Hash file including all requests and responses.\n"
+  opts.banner += "More info: https://github.com/MarioRuiz/open_api_import\n\n"
+  opts.banner += "In case no options supplied: \n"
+  opts.banner += "  * It will be used the value of operation_id on snake_case for the name of the methods\n"
+  opts.banner += "  * It will be used the first folder of the path to create the module name\n"
+
+  opts.on("-v", "--version", "Display the version") do
+    puts "open_api_import #{OpenApiImport::VERSION}"
+    exit
+  end
+
   opts.on("-n", "--no_responses", "if you don't want to add the examples of responses in the resultant file.") do
     options[:include_responses] = false
   end
@@ -50,7 +55,9 @@ optparse = OptionParser.new do |opts|
     options[:create_constants] = true
   end
 
-
+  opts.on("-d", "--dry_run", "Preview the generated output without writing files") do
+    options[:return_data] = true
+  end
 end
 
 optparse.parse!
@@ -65,9 +72,16 @@ if options.key?(:create_files)
 end
 
 filename = ARGV.pop
-if filename.to_s==''
+if filename.to_s == ""
   puts optparse
   puts "** Need to specify at least a file to import."
 else
-  OpenApiImport.from filename, **options
+  result = OpenApiImport.from filename, **options
+  if options[:return_data] && result.is_a?(Hash)
+    result.each do |filepath, content|
+      puts "--- #{filepath} ---"
+      puts content
+      puts
+    end
+  end
 end

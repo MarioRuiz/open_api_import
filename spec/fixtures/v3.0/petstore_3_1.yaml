@@ -1,0 +1,57 @@
+openapi: "3.1.0"
+info:
+  version: 1.0.0
+  title: Swagger Petstore 3.1
+  license:
+    name: MIT
+paths:
+  /pets:
+    get:
+      summary: List all pets
+      operationId: listPets
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: A list of pets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    name:
+                      type: string
+                    tag:
+                      type:
+                        - string
+                        - "null"
+    post:
+      summary: Create a pet
+      operationId: createPet
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  examples:
+                    - Fido
+                tag:
+                  type:
+                    - string
+                    - "null"
+      responses:
+        '201':
+          description: Pet created

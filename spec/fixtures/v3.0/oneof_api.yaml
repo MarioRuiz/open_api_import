@@ -1,0 +1,53 @@
+openapi: "3.0.0"
+info:
+  title: OneOf API
+  version: "1.0.0"
+paths:
+  /pets:
+    post:
+      operationId: createPet
+      summary: Create a pet with oneOf body
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  required:
+                    - name
+                  properties:
+                    name:
+                      type: string
+                    bark:
+                      type: boolean
+                - type: object
+                  required:
+                    - name
+                  properties:
+                    name:
+                      type: string
+                    purr:
+                      type: boolean
+      responses:
+        '201':
+          description: Pet created
+  /animals:
+    post:
+      operationId: createAnimal
+      summary: Create animal with anyOf body
+      requestBody:
+        content:
+          application/json:
+            schema:
+              anyOf:
+                - type: object
+                  properties:
+                    species:
+                      type: string
+                - type: object
+                  properties:
+                    breed:
+                      type: string
+      responses:
+        '201':
+          description: Animal created
