@@ -1,0 +1,53 @@
+swagger: "2.0"
+info:
+  title: FormData API
+  version: "1.0.0"
+basePath: /api
+paths:
+  /upload:
+    post:
+      operationId: uploadFile
+      summary: Upload a file
+      consumes:
+        - multipart/form-data
+      parameters:
+        - name: filename
+          in: formData
+          type: string
+          description: Name of the file
+        - name: enabled
+          in: formData
+          type: boolean
+          description: Whether file is enabled
+        - name: size
+          in: formData
+          type: integer
+          description: File size
+        - name: ratio
+          in: formData
+          type: number
+          description: Compression ratio
+      responses:
+        '200':
+          description: File uploaded
+  /items:
+    get:
+      operationId: listItems
+      summary: List items
+      parameters:
+        - name: X-Request-Id
+          in: header
+          type: string
+          description: Request identifier
+        - name: page
+          in: query
+          type: integer
+          required: true
+          description: Page number
+      responses:
+        '200':
+          description: Items listed
+          schema:
+            type: array
+            items:
+              type: string

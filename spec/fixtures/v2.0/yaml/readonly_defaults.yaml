@@ -1,0 +1,45 @@
+swagger: "2.0"
+info:
+  title: ReadOnly and Defaults API
+  version: "1.0.0"
+basePath: /api
+paths:
+  /resources:
+    post:
+      operationId: createResource
+      summary: Create a resource
+      parameters:
+        - name: body
+          in: body
+          schema:
+            type: object
+            required:
+              - name
+            properties:
+              id:
+                type: integer
+                readOnly: true
+              name:
+                type: string
+              status:
+                type: string
+                default: "active"
+              count:
+                type: integer
+                default: 0
+              enabled:
+                type: boolean
+                default: null
+      responses:
+        '201':
+          description: Resource created
+          schema:
+            type: object
+            properties:
+              id:
+                type: integer
+                readOnly: true
+              name:
+                type: string
+              status:
+                type: string

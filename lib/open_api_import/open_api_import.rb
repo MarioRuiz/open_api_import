@@ -1,4 +1,12 @@
+using OpenApiImportStringExt
+
 class OpenApiImport
+  class ParseError < StandardError; end
+
+  VERSION = "0.12.0"
+
+  extend LibOpenApiImport
+
   ##############################################################################################
   # Import a Swagger or Open API file and create a Ruby Request Hash file including all requests and responses.
   # The http methods that will be treated are: 'get','post','put','delete', 'patch'.
@@ -18,8 +26,10 @@ class OpenApiImport
   #   tags: It will be used the tags key to create the module name, for example the tags: [users,list] will create the module UsersList and all the requests from all modules in the same file.
   #   tags_file: It will be used the tags key to create the module name, for example the tags: [users,list] will create the module UsersList and and each module will be in a new requests file.
   #   fixed: all the requests will be under the module Requests
+  # @param return_data [Boolean]. (default: false) Instead of writing files, return a Hash of {filename => content}.
   ##############################################################################################
-  def self.from(swagger_file, create_method_name: :operation_id, include_responses: true, mock_response: false, name_for_module: :path, silent: false, create_constants: false)
+  def self.from(swagger_file, create_method_name: :operation_id, include_responses: true, mock_response: false,
+                name_for_module: :path, silent: false, create_constants: false, return_data: false)
     begin
       f = File.new("#{swagger_file}_open_api_import.log", "w")
       f.sync = true
@@ -35,11 +45,7 @@ class OpenApiImport
       @logger.info "swagger_file: #{swagger_file}, include_responses: #{include_responses}, mock_response: #{mock_response}\n"
       @logger.info "create_method_name: #{create_method_name}, name_for_module: #{name_for_module}\n"
 
-      file_to_convert = if swagger_file["./"].nil?
-          swagger_file
-        else
-          Dir.pwd.to_s + "/" + swagger_file.gsub("./", "")
-        end
+      file_to_convert = File.expand_path(swagger_file)
       unless File.exist?(file_to_convert)
         raise "The file #{file_to_convert} doesn't exist"
       end
@@ -51,14 +57,13 @@ class OpenApiImport
 
       begin
         definition = OasParser::Definition.resolve(swagger_file)
-      rescue Exception => stack
+      rescue StandardError => stack
         message = "There was a problem parsing the Open Api document using the oas_parser_reborn gem. The execution was aborted.\n"
         message += "Visit the github for oas_parser_reborn gem for bugs and more info: https://github.com/MarioRuiz/oas_parser_reborn\n"
         message += "Error: #{stack.message}"
-        puts message
         @logger.fatal message
         @logger.fatal stack.backtrace.join("\n")
-        exit!
+        raise ParseError, message
       end
 
       raw = definition.raw.deep_symbolize_keys
@@ -105,7 +110,6 @@ class OpenApiImport
           raw.each do |met, cont|
             if met != :parameters
               if raw[met].key?(:parameters)
-                #in case parameters for all methods in path is present
                 raw[met][:parameters] = raw[met][:parameters] + raw[:parameters]
               else
                 raw[met][:parameters] = raw[:parameters]
@@ -124,15 +128,15 @@ class OpenApiImport
             params_data = []
             description_parameters = []
             data_form = []
+            data_form_hash = {}
             data_required = []
-            #todo: add nested one.true.three to data_read_only
             data_read_only = []
             data_default = []
             data_examples = []
+            data_examples_hashes = []
             data_pattern = []
             responses = []
 
-            # for the case operationId is missing
             cont[:operationId] = "undefined" unless cont.key?(:operationId)
 
             if create_method_name == :path
@@ -142,7 +146,7 @@ class OpenApiImport
               if (name_for_module == :tags or name_for_module == :tags_file) and cont.key?(:tags) and cont[:tags].is_a?(Array) and cont[:tags].size > 0
                 metnametmp = cont[:operationId].gsub(/^#{cont[:tags].join}[\s_]*/, "")
                 cont[:tags].join.split(" ").each do |tag|
-                  metnametmp.gsub!(/^#{tag}[\s_]*/i, "")
+                  metnametmp = metnametmp.gsub(/^#{tag}[\s_]*/i, "")
                 end
                 metnametmp = met if metnametmp == ""
               else
@@ -153,7 +157,7 @@ class OpenApiImport
               if (name_for_module == :tags or name_for_module == :tags_file) and cont.key?(:tags) and cont[:tags].is_a?(Array) and cont[:tags].size > 0
                 method_name = cont[:operationId].gsub(/^#{cont[:tags].join}[\s_]*/, "")
                 cont[:tags].join.split(" ").each do |tag|
-                  method_name.gsub!(/^#{tag}[\s_]*/i, "")
+                  method_name = method_name.gsub(/^#{tag}[\s_]*/i, "")
                 end
                 method_name = met if method_name == ""
               else
@@ -164,12 +168,9 @@ class OpenApiImport
             if [:path, :path_file, :tags, :tags_file].include?(name_for_module)
               old_module_requests = module_requests
               if [:path, :path_file].include?(name_for_module)
-                # to remove version from path fex: /v1/Customer
                 path_requests = path_txt.gsub(/^\/v[\d\.]*\//i, "")
-                # to remove version from path fex: /1.0/Customer
                 path_requests = path_requests.gsub(/^\/[\d\.]*\//i, "")
                 if (path_requests == path_txt) && (path_txt.scan("/").size == 1)
-                  # no folder in path
                   module_requests = "Root"
                 else
                   res_path = path_requests.scan(/(\w+)/)
@@ -183,26 +184,24 @@ class OpenApiImport
                 end
               end
 
-              # to remove from method_name: v1_list_regions and add it to module
               if /^(?<vers>v\d+)/i =~ method_name
-                method_name.gsub!(/^#{vers}_?/, "")
+                method_name = method_name.gsub(/^#{vers}_?/, "")
                 module_requests = (vers.capitalize + module_requests).camel_case unless module_requests.start_with?(vers)
               end
 
               if old_module_requests != module_requests
                 output << "end" unless old_module_requests == "" or name_for_module == :path_file or name_for_module == :tags_file
                 if name_for_module == :path or name_for_module == :tags
-                  # to add the end for the previous module unless is the first one
                   output << "module #{module_requests}"
                 else #:path_file, :tags_file
                   if old_module_requests != ""
                     unless files.key?(old_module_requests)
-                      files[old_module_requests] = Array.new
+                      files[old_module_requests] = []
                     end
                     files[old_module_requests].concat(output)
-                    output = Array.new
+                    output = []
                   end
-                  output << "module #{module_requests}" unless files.key?(module_requests) # don't add in case already existed
+                  output << "module #{module_requests}" unless files.key?(module_requests)
                 end
               end
             end
@@ -228,29 +227,25 @@ class OpenApiImport
 
                 data_pattern += get_patterns("", v[:schema]) if v.key?(:schema)
                 data_pattern.uniq!
-                v[:description] = v[:description].to_s.gsub("'", %q(\\\'))
+                resp_description = v[:description].to_s.gsub("'", %q(\\\'))
                 if !response_example.empty?
                   responses << "'#{k}': { "
-                  responses << "message: '#{v[:description]}', "
+                  responses << "message: '#{resp_description}', "
                   responses << "data: "
                   responses << response_example
                   responses << "},"
                   if mock_response and mock_example.size == 0
                     mock_example << "code: '#{k}',"
-                    mock_example << "message: '#{v[:description]}',"
+                    mock_example << "message: '#{resp_description}',"
                     mock_example << "data: "
                     mock_example << response_example
                   end
                 else
-                  responses << "'#{k}': { message: '#{v[:description]}'}, "
+                  responses << "'#{k}': { message: '#{resp_description}'}, "
                 end
               end
             end
-            # todo: for open api 3.0 add the new Link feature: https://swagger.io/docs/specification/links/
-            # todo: for open api 3.0 is not getting the required params in all cases
 
-            # for the case open api 3 with cont.requestBody.content.'applicatin/json'.schema
-            # example: petstore-expanded.yaml operationId=addPet
             if cont.key?(:requestBody) and cont[:requestBody].key?(:content) and
                cont[:requestBody][:content].key?(:'application/json') and cont[:requestBody][:content][:'application/json'].key?(:schema)
               cont[:parameters] = [] unless cont.key?(:parameters)
@@ -262,8 +257,10 @@ class OpenApiImport
               cont[:parameters].each do |p|
                 if p.keys.include?(:schema) and p[:schema].include?(:type)
                   type = p[:schema][:type]
+                  type = Array(type).reject { |t| t == "null" }.first if type.is_a?(Array)
                 elsif p.keys.include?(:type)
                   type = p[:type]
+                  type = Array(type).reject { |t| t == "null" }.first if type.is_a?(Array)
                 else
                   type = ""
                 end
@@ -271,10 +268,10 @@ class OpenApiImport
                 if p[:in] == "path"
                   if create_method_name == :operationId
                     param_name = p[:name]
-                    path_txt.gsub!("{#{param_name}}", "\#{#{param_name}}")
+                    path_txt = path_txt.gsub("{#{param_name}}", "\#{#{param_name}}")
                   else
                     param_name = p[:name].to_s.snake_case
-                    path_txt.gsub!("{#{p[:name]}}", "\#{#{param_name}}")
+                    path_txt = path_txt.gsub("{#{p[:name]}}", "\#{#{param_name}}")
                   end
                   unless params_path.include?(param_name)
                     if create_constants
@@ -283,7 +280,6 @@ class OpenApiImport
                     else
                       params_path << param_name
                     end
-                    #params_required << param_name if p[:required].to_s=="true"
                     @logger.warn "Description key is missing for #{met} #{path.path} #{p[:name]}" if p[:description].nil?
                     description_parameters << "#    #{p[:name]}: (#{type}) #{"(required)" if p[:required].to_s == "true"} #{p[:description].to_s.split("\n").join("\n#\t\t\t")}"
                   end
@@ -293,21 +289,21 @@ class OpenApiImport
                   @logger.warn "Description key is missing for #{met} #{path.path} #{p[:name]}" if p[:description].nil?
                   description_parameters << "#    #{p[:name]}: (#{type}) #{"(required)" if p[:required].to_s == "true"} #{p[:description].to_s.split("\n").join("\n#\t\t\t")}"
                 elsif p[:in] == "formData" or p[:in] == "formdata"
-                  #todo: take in consideration: default, required
-                  #todo: see if we should add the required as params to the method and not required as options
-                  #todo: set on data the required fields with the values from args
-
                   description_parameters << "#    #{p[:name]}: (#{p[:type]}) #{p[:description].split("\n").join("\n#\t\t\t")}"
 
                   case p[:type]
                   when /^string$/i
                     data_form << "#{p[:name]}: ''"
+                    data_form_hash[p[:name].to_sym] = ''
                   when /^boolean$/i
                     data_form << "#{p[:name]}: true"
+                    data_form_hash[p[:name].to_sym] = true
                   when /^number$/i
                     data_form << "#{p[:name]}: 0"
+                    data_form_hash[p[:name].to_sym] = 0
                   when /^integer$/i
                     data_form << "#{p[:name]}: 0"
+                    data_form_hash[p[:name].to_sym] = 0
                   else
                     puts "! on formData not supported type #{p[:type]}"
                   end
@@ -319,13 +315,14 @@ class OpenApiImport
                       bodies = p[:schema][:anyOf]
                     elsif p[:schema].key?(:allOf)
                       data_examples_all_of, bodies = get_data_all_of_bodies(p)
-                      bodies.unshift(p[:schema]) if p[:schema].key?(:required) or p.key?(:required) #todo: check if this 'if' is necessary
-                      data_examples_all_of = true # because we are on data and allOf already
+                      bodies.unshift(p[:schema]) if p[:schema].key?(:required) or p.key?(:required)
+                      data_examples_all_of = true
                     else
                       bodies = [p[:schema]]
                     end
 
                     params_data = []
+                    params_data_hash = {}
 
                     bodies.each do |body|
                       data_required += get_required_data(body)
@@ -395,8 +392,8 @@ class OpenApiImport
                             end
                           end
 
-                          #todo: consider check default and insert it
-                          #todo: remove array from here and add the option to get_examples for the case thisisthekey: ['xxxx']
+                          params_data_hash[dpk] = build_example_value(dpv)
+
                           if dpv.key?(:type) and dpv[:type] != "array"
                             params_data << get_examples({ dpk => dpv }, :only_value, true).join
                             params_data[-1].chop!.chop! if params_data[-1].to_s[-2..-1] == ", "
@@ -405,7 +402,7 @@ class OpenApiImport
                             if valv.to_s == ""
                               valv = '""'
                             elsif valv.include?('"')
-                              valv.gsub!('"', "'") unless valv.include?("'")
+                              valv = valv.gsub('"', "'") unless valv.include?("'")
                             end
                             params_data << "#{dpk}: #{valv}"
                           end
@@ -416,7 +413,13 @@ class OpenApiImport
                           else
                             data_examples << params_data
                           end
+                          if data_examples_all_of == true and data_examples_hashes.size > 0
+                            data_examples_hashes[0].merge!(params_data_hash)
+                          else
+                            data_examples_hashes << params_data_hash.dup
+                          end
                           params_data = []
+                          params_data_hash = {}
                         end
                       end
                     end
@@ -481,18 +484,12 @@ class OpenApiImport
               output << description_parameters.uniq
             end
 
-            #for the case we still have some parameters on path that were not in 'parameters'
             if path_txt.scan(/[^#]{\w+}/).size > 0
               paramst = []
               prms = path_txt.scan(/[^#]{(\w+)}/)
               prms.each do |p|
-                #if create_constants
-                #  paramst<<"#{p[0].to_s.snake_case}: #{p[0].to_s.snake_case.upcase}"
-                #  required_constants << p[0].to_s.snake_case.upcase
-                #else
                 paramst << p[0].to_s.snake_case
-                #end
-                path_txt.gsub!("{#{p[0]}}", "\#{#{p[0].to_s.snake_case}}")
+                path_txt = path_txt.gsub("{#{p[0]}}", "\#{#{p[0].to_s.snake_case}}")
               end
               paramst.concat params
               params = paramst
@@ -533,6 +530,7 @@ class OpenApiImport
 
             unless data_form.empty?
               data_examples << data_form
+              data_examples_hashes << data_form_hash unless data_form_hash.empty?
             end
 
             unless data_examples.empty?
@@ -540,18 +538,15 @@ class OpenApiImport
                 reqdata = []
                 begin
                   data_examples[0].uniq!
-                  data_ex = eval("{#{data_examples[0].join(", ")}}")
-                rescue SyntaxError
+                  data_ex = data_examples_hashes[0] || {}
+                rescue StandardError => e
                   data_ex = {}
-                  @logger.warn "Syntax error: #{met} for path: #{path.path} evaluating data_examples[0] => #{data_examples[0].inspect}"
-                rescue
-                  data_ex = {}
-                  @logger.warn "Syntax error: #{met} for path: #{path.path} evaluating data_examples[0] => #{data_examples[0].inspect}"
+                  @logger.warn "Error processing data examples: #{met} for path: #{path.path} => #{e.message}"
                 end
                 if (data_required.grep(/\./)).empty?
-                  reqdata = filter(data_ex, data_required) #not nested
+                  reqdata = filter(data_ex, data_required)
                 else
-                  reqdata = filter(data_ex, data_required, true) #nested
+                  reqdata = filter(data_ex, data_required, true)
                 end
                 unless reqdata.empty?
                   reqdata.uniq!
@@ -562,7 +557,6 @@ class OpenApiImport
               end
               unless data_read_only.empty? or !data_required.empty?
                 reqdata = []
-                #remove read only fields from :data
                 data_examples[0].each do |edata|
                   read_only = false
                   data_read_only.each do |rdata|
@@ -616,22 +610,27 @@ class OpenApiImport
 
       output_footer << "end" unless (module_requests == "") && ([:path, :path_file, :tags, :tags_file].include?(name_for_module))
       output_footer << "end" << "end" << "end"
+
+      generated_files = {}
+
       if files.size == 0 and !create_constants
         output = output_header + output + output_footer
         output_txt = output.join("\n")
         requests_file_path = file_to_convert + ".rb"
-        File.open(requests_file_path, "w") { |file| file.write(output_txt) }
-        res_rufo = `rufo #{requests_file_path}`
-        message = "** Requests file: #{swagger_file}.rb that contains the code of the requests after importing the Swagger file"
-        puts message unless silent
-        @logger.info message
-        @logger.error "       Error formating with rufo" unless res_rufo.to_s.match?(/\AFormat:.+$\s*\z/)
-        @logger.error "       Syntax Error: #{`ruby -c #{requests_file_path}`}" unless `ruby -c #{requests_file_path}`.include?("Syntax OK")
+        if return_data
+          generated_files[requests_file_path] = output_txt
+        else
+          File.open(requests_file_path, "w") { |file| file.write(output_txt) }
+          format_and_check_file(requests_file_path, @logger)
+          message = "** Requests file: #{swagger_file}.rb that contains the code of the requests after importing the Swagger file"
+          puts message unless silent
+          @logger.info message
+        end
       else
         unless files.key?(module_requests)
-          files[module_requests] = Array.new
+          files[module_requests] = []
         end
-        files[module_requests].concat(output) #for the last one
+        files[module_requests].concat(output)
 
         requires_txt = ""
         message = "** Generated files that contain the code of the requests after importing the Swagger file: "
@@ -642,13 +641,16 @@ class OpenApiImport
           output_txt = output.join("\n")
           requests_file_path = file_to_convert + "_" + mod + ".rb"
           requires_txt += "require_relative '#{File.basename(swagger_file)}_#{mod}'\n"
-          File.open(requests_file_path, "w") { |file| file.write(output_txt) }
-          res_rufo = `rufo #{requests_file_path}`
-          message = "  - #{requests_file_path}"
-          puts message unless silent
-          @logger.info message
-          @logger.error "       Error formating with rufo" unless res_rufo.to_s.match?(/\AFormat:.+$\s*\z/)
-          @logger.error "       Syntax Error: #{`ruby -c #{requests_file_path}`}" unless `ruby -c #{requests_file_path}`.include?("Syntax OK")
+          if return_data
+            generated_files[requests_file_path] = output_txt
+          else
+            File.open(requests_file_path, "w") { |file| file.write(output_txt) }
+            format_and_check_file(requests_file_path, @logger)
+            display_path = swagger_file + "_" + mod + ".rb"
+            message = "  - #{display_path}"
+            puts message unless silent
+            @logger.info message
+          end
         end
 
         requests_file_path = file_to_convert + ".rb"
@@ -663,25 +665,29 @@ class OpenApiImport
           rconsts = ""
         end
 
-        File.open(requests_file_path, "w") { |file| file.write(rconsts + requires_txt) }
-        res_rufo = `rufo #{requests_file_path}`
-        message = "** File that contains all the requires for all Request files: \n"
-        message += "   - #{requests_file_path} "
-        puts message unless silent
-        @logger.info message
-        @logger.error "       Error formating with rufo" unless res_rufo.to_s.match?(/\AFormat:.+$\s*\z/)
-        @logger.error "       Syntax Error: #{`ruby -c #{requests_file_path}`}" unless `ruby -c #{requests_file_path}`.include?("Syntax OK")
+        if return_data
+          generated_files[requests_file_path] = rconsts + requires_txt
+        else
+          File.open(requests_file_path, "w") { |file| file.write(rconsts + requires_txt) }
+          format_and_check_file(requests_file_path, @logger)
+          message = "** File that contains all the requires for all Request files: \n"
+          message += "   - #{swagger_file}.rb "
+          puts message unless silent
+          @logger.info message
+        end
       end
 
+      return generated_files if return_data
+
       begin
-        res = eval(output_txt)
-      rescue Exception => stack
+        load File.expand_path(requests_file_path)
+      rescue StandardError => stack
         import_errors += "\n\nResult evaluating the ruby file generated: \n" + stack.to_s
       end
 
       if import_errors.to_s != ""
         File.open(file_errors, "w") { |file| file.write(import_errors) }
-        message = "* It seems there was a problem importing the Swagger file #{file_to_convert}\n"
+        message = "* It seems there was a problem importing the Swagger file #{swagger_file}\n"
         message += "* Take a look at the detected errors at #{file_errors}\n"
         warn message
         @logger.fatal message
@@ -689,11 +695,58 @@ class OpenApiImport
       else
         return true
       end
+    rescue ParseError
+      raise
     rescue StandardError => stack
       puts stack.message
       @logger.fatal stack.message
       @logger.fatal stack.backtrace
       puts stack.backtrace
+    end
+  end
+
+  private_class_method def self.format_and_check_file(file_path, logger)
+    escaped_path = Shellwords.shellescape(file_path)
+    res_rufo = `rufo #{escaped_path}`
+    logger.error "       Error formatting with rufo" unless res_rufo.to_s.match?(/\AFormat:.+$\s*\z/)
+    syntax_result = `ruby -c #{escaped_path} 2>&1`
+    logger.error "       Syntax Error: #{syntax_result}" unless syntax_result.include?("Syntax OK")
+  rescue Errno::ENOENT => e
+    logger.error "       Could not run formatter/syntax checker: #{e.message}"
+  end
+
+  private_class_method def self.build_example_value(dpv)
+    if dpv.key?(:example)
+      dpv[:example]
+    elsif dpv.key?(:examples) && dpv[:examples].is_a?(Array) && !dpv[:examples].empty?
+      dpv[:examples].first
+    elsif dpv.key?(:type)
+      effective_type = dpv[:type]
+      effective_type = Array(effective_type).reject { |t| t == "null" }.first if effective_type.is_a?(Array)
+      case effective_type.to_s.downcase
+      when "string" then dpv[:format] || "string"
+      when "integer" then 0
+      when "number"
+        %w[float double decimal].include?(dpv[:format].to_s.downcase) ? 0.0 : 0
+      when "boolean" then true
+      when "object"
+        if dpv.key?(:properties)
+          result = {}
+          dpv[:properties].each { |k, v| result[k] = build_example_value(v) }
+          result
+        else
+          {}
+        end
+      when "array"
+        if dpv.key?(:items) && dpv[:items].is_a?(Hash)
+          [build_example_value(dpv[:items])]
+        else
+          []
+        end
+      else dpv[:format] || ""
+      end
+    else
+      ""
     end
   end
 end

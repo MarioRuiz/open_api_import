@@ -1,8 +1,9 @@
+# frozen_string_literal: true
+
 module LibOpenApiImport
-  # Get required data
   private def get_required_data(body)
     data_required = []
-    if body.keys.include?(:required) and body[:required].size > 0
+    if body.key?(:required) and body[:required].size > 0
       body[:required].each do |r|
         data_required << r.to_sym
       end
@@ -16,15 +17,17 @@ module LibOpenApiImport
         end
       end
     end
+    nested_required = []
     data_required.each do |key|
       if body.key?(:properties) and body[:properties][key].is_a?(Hash) and
          body[:properties][key].key?(:required) and body[:properties][key][:required].size > 0
         dr = get_required_data(body[:properties][key])
         dr.each do |k|
-          data_required.push("#{key}.#{k}".to_sym)
+          nested_required << "#{key}.#{k}".to_sym
         end
       end
     end
-    return data_required
+    data_required.concat(nested_required)
+    data_required
   end
 end

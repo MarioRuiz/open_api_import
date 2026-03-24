@@ -1,22 +1,20 @@
-class String
-  ########################################################
-  # Convert to snake_case a string
-  ########################################################
-  def snake_case
-    gsub(/\W/, '_')
-      .gsub(/([A-Z]+)([A-Z][a-z])/, '\1_\2')
-      .gsub(/([a-z])([A-Z])/, '\1_\2')
-      .downcase
-      .gsub(/_+/, '_')
-  end
+# frozen_string_literal: true
 
-  ########################################################
-  # Convert to CamelCase a string
-  ########################################################
-  def camel_case
-    return self if self !~ /_/ && self !~ /-/ && self !~ /\s/ && self =~ /^[A-Z]+.*/
+module OpenApiImportStringExt
+  refine String do
+    def snake_case
+      gsub(/\W/, '_')
+        .gsub(/([A-Z]+)([A-Z][a-z])/, '\1_\2')
+        .gsub(/([a-z])([A-Z])/, '\1_\2')
+        .downcase
+        .gsub(/_+/, '_')
+    end
 
-    gsub(/\W/, '_')
-      .split('_').map(&:capitalize).join
+    def camel_case
+      return self if self !~ /_/ && self !~ /-/ && self !~ /\s/ && self =~ /^[A-Z]+.*/
+
+      gsub(/\W/, '_')
+        .split('_').map(&:capitalize).join
+    end
   end
 end

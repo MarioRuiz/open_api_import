@@ -8,10 +8,8 @@ require_relative "open_api_import/get_response_examples"
 require_relative "open_api_import/get_examples"
 require_relative "open_api_import/open_api_import"
 
-include LibOpenApiImport
-
 require "oas_parser_reborn"
 require "rufo"
 require "nice_hash"
 require "logger"
-
+require "shellwords"

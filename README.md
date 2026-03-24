@@ -1,10 +1,10 @@
 # OpenApiImport
 
 [![Gem Version](https://badge.fury.io/rb/open_api_import.svg)](https://rubygems.org/gems/open_api_import)
-[![Build Status](https://travis-ci.com/MarioRuiz/open_api_import.svg?branch=master)](https://github.com/MarioRuiz/open_api_import)
+[![CI](https://github.com/MarioRuiz/open_api_import/actions/workflows/ci.yml/badge.svg)](https://github.com/MarioRuiz/open_api_import/actions/workflows/ci.yml)
 [![Coverage Status](https://coveralls.io/repos/github/MarioRuiz/open_api_import/badge.svg?branch=master)](https://coveralls.io/github/MarioRuiz/open_api_import?branch=master)
 
-Import a Swagger or Open API file and create a Ruby Request Hash file including all requests and responses with all the examples. The file can be in JSON or YAML.
+Import a Swagger or Open API file (including Open API 3.1) and create a Ruby Request Hash file including all requests and responses with all the examples. The file can be in JSON or YAML.
 
 The Request Hash will include also the pattern (regular expressions) of the fields,  parameters, default values...
 
@@ -68,6 +68,10 @@ This is the output of the previous run:
 - Helper: ./spec/helper.rb
 ```
 
+## Requirements
+
+- Ruby >= 3.0
+
 ## Installation
 
 Install it yourself as:
@@ -102,6 +106,7 @@ More info: https://github.com/MarioRuiz/open_api_import
 In case no options supplied:
   * It will be used the value of operation_id on snake_case for the name of the methods
   * It will be used the first folder of the path to create the module name
+    -v, --version                    Display the version
     -n, --no_responses               if you don't want to add the examples of responses in the resultant file.
     -m, --mock                       Add the first response on the request as mock_response
     -p, --path_method                it will be used the path and http method to create the method names
@@ -111,6 +116,7 @@ In case no options supplied:
     -F, --fixed_module               all the requests will be under the module Requests
     -s, --silent                     It will display only errors
     -c, --create_constants           For required arguments, it will create keyword arguments assigning by default a constant.
+    -d, --dry_run                    Preview the generated output without writing files
 ```
 
 
@@ -488,6 +494,23 @@ It will include this on the output file:
             },
 ...
 ...
+```
+
+### return_data
+
+Instead of writing files to disk, return a Hash of `{filename => content}`. This is useful for previewing the output or programmatically processing the generated code.
+
+Accepts true or false, by default is false.
+
+```ruby
+  require 'open_api_import'
+
+  result = OpenApiImport.from "./spec/fixtures/v2.0/yaml/petstore-simple.yaml", return_data: true
+
+  result.each do |filepath, content|
+    puts "--- #{filepath} ---"
+    puts content
+  end
 ```
 
 ### create_constants

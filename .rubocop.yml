@@ -1,0 +1,85 @@
+AllCops:
+  TargetRubyVersion: 3.1
+  NewCops: enable
+  SuggestExtensions: false
+  Exclude:
+    - 'spec/fixtures/**/*'
+    - 'vendor/**/*'
+
+Style/Documentation:
+  Enabled: false
+
+Style/FrozenStringLiteralComment:
+  Enabled: true
+  EnforcedStyle: always
+  Exclude:
+    - 'spec/**/*'
+    - 'Rakefile'
+    - 'Gemfile'
+    - 'bin/*'
+
+Metrics/MethodLength:
+  Max: 400
+  Exclude:
+    - 'spec/**/*'
+
+Metrics/AbcSize:
+  Max: 500
+  Exclude:
+    - 'spec/**/*'
+
+Metrics/CyclomaticComplexity:
+  Max: 80
+
+Metrics/PerceivedComplexity:
+  Max: 80
+
+Metrics/BlockLength:
+  Exclude:
+    - 'spec/**/*'
+    - 'Rakefile'
+
+Metrics/ClassLength:
+  Max: 800
+
+Layout/LineLength:
+  Max: 200
+
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
+
+Style/StringLiteralsInInterpolation:
+  EnforcedStyle: double_quotes
+
+Naming/MethodName:
+  Enabled: false
+
+Naming/MethodParameterName:
+  Enabled: false
+
+Style/GuardClause:
+  Enabled: false
+
+Style/Next:
+  Enabled: false
+
+Style/IfUnlessModifier:
+  Enabled: false
+
+Style/ConditionalAssignment:
+  Enabled: false
+
+Style/NegatedIf:
+  Enabled: false
+
+Style/CaseLikeIf:
+  Enabled: false
+
+Style/SymbolArray:
+  Enabled: false
+
+Lint/SuppressedException:
+  Enabled: false
+
+Style/RescueStandardError:
+  Enabled: false
