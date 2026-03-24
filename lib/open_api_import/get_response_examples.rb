@@ -28,7 +28,7 @@ module LibOpenApiImport
           if ex.is_a?(Hash)
             exs.gsub!(/:(\w+)=>/, "\n\\1: ")
           end
-          response_example << ("#{exs}, ")
+          response_example << "#{exs}, "
         end
         response_example << "]"
       end
@@ -56,7 +56,7 @@ module LibOpenApiImport
             if ex.is_a?(Hash)
               exs.gsub!(/:(\w+)=>/, "\n\\1: ")
             end
-            response_example << ("#{exs}, ")
+            response_example << "#{exs}, "
           end
           response_example << "]"
         end

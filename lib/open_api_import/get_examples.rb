@@ -60,14 +60,14 @@ module LibOpenApiImport
             if items_enum
               if type == :only_value
                 if items_enum[0].is_a?(String)
-                  example << (" [\"#{items_enum[0]}\"] ")
+                  example << " [\"#{items_enum[0]}\"] "
                 else
-                  example << (" [#{items_enum[0]}] ")
+                  example << " [#{items_enum[0]}] "
                 end
               elsif items_enum[0].is_a?(String)
-                example << (" #{prop.to_sym}: [\"#{items_enum[0]}\"], ")
+                example << " #{prop.to_sym}: [\"#{items_enum[0]}\"], "
               else
-                example << (" #{prop.to_sym}: [#{items_enum[0]}], ")
+                example << " #{prop.to_sym}: [#{items_enum[0]}], "
               end
             else
               examplet = get_response_examples({ schema: val }, remove_readonly).join("\n")
@@ -75,7 +75,7 @@ module LibOpenApiImport
               if type == :only_value
                 example << examplet
               else
-                example << (" #{prop.to_sym}: #{examplet}, ")
+                example << " #{prop.to_sym}: #{examplet}, "
               end
             end
           when "object"
@@ -85,7 +85,7 @@ module LibOpenApiImport
             else
               res_ex = res_ex.join("\n")
             end
-            example << (" #{prop.to_sym}: #{res_ex}, ")
+            example << " #{prop.to_sym}: #{res_ex}, "
           else
             example << " #{prop.to_sym}: \"#{format}\", "
           end

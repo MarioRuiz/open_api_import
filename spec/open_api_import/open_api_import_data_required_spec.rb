@@ -22,7 +22,7 @@ RSpec.describe OpenApiImport do
       expect(File.exist?("#{file_name}.rb")).to eq true
       content = File.read("#{file_name}.rb")
       expect(content).to include 'def self.find_pets(tags: "", limit: "")'
-      expect(content).to include 'path: "/api/pets?tags=#{tags}&limit=#{limit}&"'
+      expect(content).to include "path: \"/api/pets?tags=\#{tags}&limit=\#{limit}&\""
     end
 
     it "adds query parameters to path and as required params on the method when required" do
@@ -32,7 +32,7 @@ RSpec.describe OpenApiImport do
       expect(File.exist?("#{file_name}.rb")).to eq true
       content = File.read("#{file_name}.rb")
       expect(content).to include "def self.find_pet_by_id(id)"
-      expect(content).to include 'path: "/api/pets/#{id}",'
+      expect(content).to include "path: \"/api/pets/\#{id}\","
     end
   end
 end

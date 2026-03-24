@@ -167,8 +167,8 @@ class OpenApiImport
             if [:path, :path_file, :tags, :tags_file].include?(name_for_module)
               old_module_requests = module_requests
               if [:path, :path_file].include?(name_for_module)
-                path_requests = path_txt.gsub(%r{^/v[\d\.]*/}i, "")
-                path_requests = path_requests.gsub(%r{^/[\d\.]*/}i, "")
+                path_requests = path_txt.gsub(%r{^/v[\d.]*/}i, "")
+                path_requests = path_requests.gsub(%r{^/[\d.]*/}i, "")
                 if (path_requests == path_txt) && (path_txt.scan("/").size == 1)
                   module_requests = "Root"
                 else
@@ -363,7 +363,7 @@ class OpenApiImport
                           data_pattern.uniq!
                           dpkeys = []
                           data_pattern.reject! do |dp|
-                            dpkey = dp.scan(/^'[\w\.]+'/)
+                            dpkey = dp.scan(/^'[\w.]+'/)
 
                             if dpkeys.include?(dpkey)
                               true
