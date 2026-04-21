@@ -2,7 +2,7 @@
 
 Gem::Specification.new do |s|
   s.name = "open_api_import"
-  s.version = "0.12.0"
+  s.version = "0.12.1"
   s.summary = "OpenApiImport -- Import a Swagger or Open API file and create a Ruby Request Hash file including all requests and responses with all the examples. The file can be in JSON or YAML"
   s.description = "OpenApiImport -- Import a Swagger or Open API file and create a Ruby Request Hash file including all requests and responses with all the examples. The file can be in JSON or YAML"
   s.authors = ["Mario Ruiz"]

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "fileutils"
+
 require_relative "open_api_import/utils"
 require_relative "open_api_import/filter"
 require_relative "open_api_import/pretty_hash_symbolized"
