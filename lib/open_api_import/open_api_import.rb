@@ -5,7 +5,7 @@ using OpenApiImportStringExt
 class OpenApiImport
   class ParseError < StandardError; end
 
-  VERSION = "0.12.0"
+  VERSION = "0.12.1"
 
   extend LibOpenApiImport
 
@@ -53,7 +53,7 @@ class OpenApiImport
       end
 
       file_errors = "#{file_to_convert}.errors.log"
-      FileUtils.rm_f(file_errors)
+      ::FileUtils.rm_f(file_errors)
       import_errors = ""
       required_constants = []
 
