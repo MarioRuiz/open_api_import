@@ -5,7 +5,7 @@ using OpenApiImportStringExt
 class OpenApiImport
   class ParseError < StandardError; end
 
-  VERSION = "0.12.1"
+  VERSION = "0.12.2"
 
   extend LibOpenApiImport
 
@@ -81,18 +81,16 @@ class OpenApiImport
 
       raw[:host] if raw.key?(:host)
       base_path = raw[:basePath] if raw.key?(:basePath)
-      module_name = raw[:info][:title].camel_case
-      module_version = "V#{raw[:info][:version].to_s.snake_case}"
+      module_name = ruby_constant_name(raw[:info][:title])
+      module_version = ruby_module_version(raw[:info][:version])
 
       output = []
       output_header = []
       output_header << ("#" * 50)
-      output_header << "# #{raw[:info][:title]}"
-      output_header << "# version: #{raw[:info][:version]}"
+      output_header.concat comment_lines(raw[:info][:title])
+      output_header.concat comment_lines(raw[:info][:version], prefix: "# version: ")
       output_header << "# description: "
-      raw[:info][:description].to_s.split("\n").each do |d|
-        output_header << "#     #{d}" unless d == ""
-      end
+      output_header.concat comment_lines(raw[:info][:description], prefix: "#     ")
       output_header << ("#" * 50)
 
       output_header << "module Swagger"
@@ -163,6 +161,7 @@ class OpenApiImport
             else
               method_name = cont[:operationId]
             end
+            method_name = ruby_method_name(method_name, preserve_case: create_method_name == :operationId)
             path_txt = path.path.dup.to_s
             if [:path, :path_file, :tags, :tags_file].include?(name_for_module)
               old_module_requests = module_requests
@@ -173,17 +172,20 @@ class OpenApiImport
                   module_requests = "Root"
                 else
                   res_path = path_requests.scan(/(\w+)/)
-                  module_requests = res_path[0][0].camel_case
+                  module_requests = ruby_constant_name(res_path[0][0])
                 end
               elsif cont.key?(:tags) && cont[:tags].is_a?(Array) && cont[:tags].size.positive?
-                module_requests = cont[:tags].join(" ").camel_case
+                module_requests = ruby_constant_name(cont[:tags].join(" "))
               else
                 module_requests = "Undefined"
               end
 
               if /^(?<vers>v\d+)/i =~ method_name
                 method_name = method_name.gsub(/^#{vers}_?/, "")
-                module_requests = (vers.capitalize + module_requests).camel_case unless module_requests.start_with?(vers)
+                method_name = ruby_method_name(method_name, preserve_case: create_method_name == :operationId)
+                unless module_requests.start_with?(vers)
+                  module_requests = ruby_constant_name(vers.capitalize + module_requests)
+                end
               end
 
               if old_module_requests != module_requests
@@ -204,16 +206,16 @@ class OpenApiImport
             end
 
             output << ""
-            output << "# operationId: #{cont[:operationId]}, method: #{met}"
-            output << "# summary: #{cont[:summary].split("\n").join("\n#          ")}" if cont.key?(:summary)
-            if cont[:description].to_s.split("\n").empty?
-              output << "# description: #{cont[:description]}"
-            else
-              output << "# description: "
-              cont[:description].to_s.split("\n").each do |d|
-                output << "#     #{d}" unless d == ""
+            output.concat comment_lines("#{cont[:operationId]}, method: #{met}", prefix: "# operationId: ")
+            if cont.key?(:summary)
+              summary_lines = cont[:summary].to_s.split(/\R/)
+              output << "# summary: #{summary_lines[0]}" unless summary_lines.empty?
+              summary_lines.drop(1).each do |line|
+                output << "#          #{line}" unless line.empty?
               end
             end
+            output << "# description: "
+            output.concat comment_lines(cont[:description], prefix: "#     ")
 
             mock_example = []
 
@@ -277,15 +279,15 @@ class OpenApiImport
                       params_path << param_name
                     end
                     @logger.warn "Description key is missing for #{met} #{path.path} #{p[:name]}" if p[:description].nil?
-                    description_parameters << "#    #{p[:name]}: (#{type}) #{"(required)" if p[:required].to_s == "true"} #{p[:description].to_s.split("\n").join("\n#\t\t\t")}"
+                    description_parameters.concat parameter_comment_lines(p[:name], type, p[:required], p[:description])
                   end
                 elsif p[:in] == "query"
                   params_query << p[:name]
                   params_required << p[:name] if p[:required].to_s == "true"
                   @logger.warn "Description key is missing for #{met} #{path.path} #{p[:name]}" if p[:description].nil?
-                  description_parameters << "#    #{p[:name]}: (#{type}) #{"(required)" if p[:required].to_s == "true"} #{p[:description].to_s.split("\n").join("\n#\t\t\t")}"
+                  description_parameters.concat parameter_comment_lines(p[:name], type, p[:required], p[:description])
                 elsif (p[:in] == "formData") || (p[:in] == "formdata")
-                  description_parameters << "#    #{p[:name]}: (#{p[:type]}) #{p[:description].split("\n").join("\n#\t\t\t")}"
+                  description_parameters.concat parameter_comment_lines(p[:name], p[:type], p[:required], p[:description])
 
                   case p[:type]
                   when /^string$/i
@@ -356,7 +358,7 @@ class OpenApiImport
                           end
 
                           if dpv.keys.include?(:description)
-                            description_parameters << "#    #{dpk}: (#{dpv[:type]}) #{dpv[:description].split("\n").join("\n#\t\t\t")}"
+                            description_parameters.concat parameter_comment_lines(dpk, dpv[:type], false, dpv[:description])
                           end
 
                           data_pattern += get_patterns(dpk, dpv)

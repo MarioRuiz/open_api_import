@@ -11,7 +11,7 @@ module OpenApiImportStringExt
     end
 
     def camel_case
-      return self if self !~ /_/ && self !~ /-/ && self !~ /\s/ && self =~ /^[A-Z]+.*/
+      return self if self =~ /\A[A-Z][A-Za-z0-9]*\z/
 
       gsub(/\W/, "_")
         .split("_").map(&:capitalize).join
