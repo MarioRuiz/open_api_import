@@ -191,5 +191,65 @@ RSpec.describe "generated source safety" do
         end
       end
     end
+
+    it "keeps a request-body property example without an explicit type as a data literal" do
+      marker = "openapi_import_residual_example"
+      mod_path = "Swagger::ResidualExampleSafetyTestUntyped::V1_0::Root"
+
+      payload = <<~YAML
+        openapi: "3.0.0"
+        info:
+          title: "ResidualExampleSafetyTestUntyped"
+          version: "1.0"
+        paths:
+          /test:
+            post:
+              operationId: "safeOperation"
+              requestBody:
+                content:
+                  application/json:
+                    schema:
+                      type: object
+                      properties:
+                        note:
+                          example: "::File.write('#{marker}','example')"
+              responses:
+                "200":
+                  description: "OK"
+      YAML
+      control = payload.sub(
+        "\"::File.write('#{marker}','example')\"",
+        '"safe_value"'
+      )
+
+      Dir.mktmpdir do |dir|
+        Dir.chdir(dir) do
+          # -- payload case --
+          FileUtils.rm_f(marker)
+          File.write("payload.yaml", payload)
+          expect(OpenApiImport.from("payload.yaml", silent: true)).to eq true
+          expect(File.exist?(marker)).to eq(false), "marker created during payload import"
+
+          # Generated source has the example as a quoted string, not bare code
+          generated = File.read("payload.yaml.rb")
+          expect(generated).to include("\"::File.write")
+          expect(uncommented_source(generated).join("\n")).not_to match(/^\s*note:\s*::File\.write/)
+
+          # Calling the generated method must not execute the example value
+          FileUtils.rm_f(marker)
+          result = Object.const_get(mod_path).safe_operation
+          expect(File.exist?(marker)).to eq(false), "marker created when calling the generated method"
+          expect(result[:data_examples].first[:note]).to include("File.write")
+
+          # -- control case --
+          FileUtils.rm_f(marker)
+          File.write("control.yaml", control)
+          expect(OpenApiImport.from("control.yaml", silent: true)).to eq true
+          expect(File.exist?(marker)).to eq(false), "marker created during control import"
+          result_control = Object.const_get(mod_path).safe_operation
+          expect(result_control[:data_examples].first[:note]).to eq "safe_value"
+        end
+      end
+    end
   end
 end

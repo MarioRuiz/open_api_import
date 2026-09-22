@@ -386,12 +386,12 @@ class OpenApiImport
                             params_data << get_examples({ dpk => dpv }, :only_value, true).join
                             params_data[-1].chop!.chop! if params_data[-1].to_s[-2..] == ", "
                             params_data.pop if params_data[-1].match?(/^\s*$/im)
+                          elsif dpv.keys.include?(:example)
+                            raw = dpv[:example].is_a?(Array) && dpv.type != "array" ? dpv[:example][0] : dpv[:example]
+                            params_data << "#{ruby_hash_key(dpk)} #{raw.inspect}"
+                          elsif valv.to_s.empty?
+                            params_data << "#{ruby_hash_key(dpk)} \"\""
                           else
-                            if valv.to_s == ""
-                              valv = '""'
-                            elsif valv.include?('"')
-                              valv = valv.gsub('"', "'") unless valv.include?("'")
-                            end
                             params_data << "#{ruby_hash_key(dpk)} #{valv}"
                           end
                         end
