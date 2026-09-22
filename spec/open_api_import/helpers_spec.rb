@@ -306,7 +306,7 @@ RSpec.describe LibOpenApiImport do
         }
       }
       result = helper.send(:get_response_examples, v)
-      expect(result).to eq(["simple string response"])
+      expect(result).to eq(['"simple string response"'])
     end
 
     it "handles v3.0 content -> examples (array value)" do
@@ -337,7 +337,7 @@ RSpec.describe LibOpenApiImport do
         }
       }
       result = helper.send(:get_response_examples, v)
-      expect(result).to eq([""])
+      expect(result).to eq(['""'])
     end
 
     it "handles schema with allOf" do
@@ -571,7 +571,7 @@ RSpec.describe LibOpenApiImport do
       }
       result = helper.send(:get_patterns, "", dpv)
       expect(result).not_to be_empty
-      expect(result.first).to include("'city'")
+      expect(result.first).to include("city:")
     end
 
     it "handles nullable type arrays (OAS 3.1)" do

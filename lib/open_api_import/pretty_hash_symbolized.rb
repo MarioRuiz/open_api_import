@@ -10,10 +10,10 @@ module LibOpenApiImport
     hash.each do |kr, kv|
       if kv.is_a?(Hash)
         restv = pretty_hash_symbolized(kv)
-        restv[0] = "#{kr}: {"
+        restv[0] = "#{ruby_hash_key(kr)} {"
         output += restv
       else
-        output << "#{kr}: #{kv.inspect}, "
+        output << "#{ruby_hash_key(kr)} #{kv.inspect}, "
       end
     end
     output << "},"
