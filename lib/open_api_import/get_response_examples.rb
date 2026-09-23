@@ -15,22 +15,13 @@ module LibOpenApiImport
       v = v[:content][:"application/json"].dup
     end
     if v.key?(:examples) && v[:examples].is_a?(Hash) && v[:examples].key?(:"application/json")
-      if v[:examples][:"application/json"].is_a?(String)
-        response_example << v[:examples][:"application/json"]
-      elsif v[:examples][:"application/json"].is_a?(Hash)
-        exs = v[:examples][:"application/json"].to_s
-        exs.gsub!(/:(\w+)=>/, "\n\\1: ")
-        response_example << exs
-      elsif v[:examples][:"application/json"].is_a?(Array)
+      example = v[:examples][:"application/json"]
+      if example.is_a?(Array)
         response_example << "["
-        v[:examples][:"application/json"].each do |ex|
-          exs = ex.to_s
-          if ex.is_a?(Hash)
-            exs.gsub!(/:(\w+)=>/, "\n\\1: ")
-          end
-          response_example << "#{exs}, "
-        end
+        example.each { |item| response_example << "#{item.inspect}, " }
         response_example << "]"
+      else
+        response_example << example.inspect
       end
       # for open api 3.0. examples on reponses, for example: api-with-examples.yaml
     elsif v.key?(:content) && v[:content].is_a?(Hash) && v[:content].key?(:"application/json") &&
@@ -43,22 +34,12 @@ module LibOpenApiImport
         else
           tresp = ""
         end
-        if tresp.is_a?(String)
-          response_example << tresp
-        elsif tresp.is_a?(Hash)
-          exs = tresp.to_s
-          exs.gsub!(/:(\w+)=>/, "\n\\1: ")
-          response_example << exs
-        elsif tresp.is_a?(Array)
+        if tresp.is_a?(Array)
           response_example << "["
-          tresp.each do |ex|
-            exs = ex.to_s
-            if ex.is_a?(Hash)
-              exs.gsub!(/:(\w+)=>/, "\n\\1: ")
-            end
-            response_example << "#{exs}, "
-          end
+          tresp.each { |item| response_example << "#{item.inspect}, " }
           response_example << "]"
+        else
+          response_example << tresp.inspect
         end
         break # only the first one it is considered
       end
@@ -91,7 +72,7 @@ module LibOpenApiImport
       end
     elsif v.key?(:schema) && v[:schema].key?(:items) && v[:schema][:items].is_a?(Hash) && v[:schema][:items].key?(:type)
       # for the case only type supplied but nothing else for the array
-      response_example << "[\"#{v[:schema][:items][:type]}\"]"
+      response_example << [v[:schema][:items][:type].to_s].inspect
     end
     response_example.each do |rs|
       # (@type Google) for the case in example the key is something like: @type:

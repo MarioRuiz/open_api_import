@@ -8,6 +8,7 @@ module LibOpenApiImport
     example << "{" unless properties.empty? || (type == :only_value)
     properties.each do |prop, val|
       unless remove_readonly && val.key?(:readOnly) && (val[:readOnly] == true)
+        key = ruby_hash_key(prop)
         effective_type = val[:type]
         if val.key?(:properties) && !val.key?(:example) && !val.key?(:type)
           effective_type = "object"
@@ -23,23 +24,23 @@ module LibOpenApiImport
 
         if effective_example
           if effective_example.is_a?(Array) && val.key?(:type) && (val[:type] == "string")
-            example << " #{prop.to_sym}: \"#{effective_example[0]}\", "
+            example << " #{key} #{effective_example[0].to_s.inspect}, "
           elsif effective_example.is_a?(String)
             escaped = effective_example.include?("'") ? effective_example : effective_example.gsub('"', "'")
-            example << " #{prop.to_sym}: \"#{escaped}\", "
+            example << " #{key} #{escaped.inspect}, "
           elsif effective_example.is_a?(Time)
-            example << " #{prop.to_sym}: \"#{effective_example}\", "
+            example << " #{key} #{effective_example.to_s.inspect}, "
           else
-            example << " #{prop.to_sym}: #{effective_example}, "
+            example << " #{key} #{effective_example.inspect}, "
           end
         elsif effective_type
           format = val[:format]
           format = effective_type if format.to_s == ""
           case effective_type.downcase
           when "string"
-            example << " #{prop.to_sym}: \"#{format}\", "
+            example << " #{key} #{format.to_s.inspect}, "
           when "integer"
-            example << " #{prop.to_sym}: 0, "
+            example << " #{key} 0, "
           when "number"
             format_name = format.to_s.downcase
             number_value = if %w[float double decimal].include?(format_name)
@@ -47,9 +48,9 @@ module LibOpenApiImport
                            else
                              "0"
                            end
-            example << " #{prop.to_sym}: #{number_value}, "
+            example << " #{key} #{number_value}, "
           when "boolean"
-            example << " #{prop.to_sym}: true, "
+            example << " #{key} true, "
           when "array"
             items_enum = if val.key?(:items) && val[:items].is_a?(Hash) && (val[:items].size == 1) && val[:items].key?(:type)
                            [val[:items][:type]]
@@ -59,15 +60,9 @@ module LibOpenApiImport
 
             if items_enum
               if type == :only_value
-                if items_enum[0].is_a?(String)
-                  example << " [\"#{items_enum[0]}\"] "
-                else
-                  example << " [#{items_enum[0]}] "
-                end
-              elsif items_enum[0].is_a?(String)
-                example << " #{prop.to_sym}: [\"#{items_enum[0]}\"], "
+                example << " #{[items_enum[0]].inspect} "
               else
-                example << " #{prop.to_sym}: [#{items_enum[0]}], "
+                example << " #{key} #{[items_enum[0]].inspect}, "
               end
             else
               examplet = get_response_examples({ schema: val }, remove_readonly).join("\n")
@@ -75,7 +70,7 @@ module LibOpenApiImport
               if type == :only_value
                 example << examplet
               else
-                example << " #{prop.to_sym}: #{examplet}, "
+                example << " #{key} #{examplet}, "
               end
             end
           when "object"
@@ -85,9 +80,9 @@ module LibOpenApiImport
             else
               res_ex = res_ex.join("\n")
             end
-            example << " #{prop.to_sym}: #{res_ex}, "
+            example << " #{key} #{res_ex}, "
           else
-            example << " #{prop.to_sym}: \"#{format}\", "
+            example << " #{key} #{format.to_s.inspect}, "
           end
         end
       end

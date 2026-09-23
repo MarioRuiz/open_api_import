@@ -3,6 +3,7 @@
 require "fileutils"
 
 require_relative "open_api_import/utils"
+require_relative "open_api_import/safe_codegen"
 require_relative "open_api_import/filter"
 require_relative "open_api_import/pretty_hash_symbolized"
 require_relative "open_api_import/get_patterns"

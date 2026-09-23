@@ -5,7 +5,7 @@ using OpenApiImportStringExt
 class OpenApiImport
   class ParseError < StandardError; end
 
-  VERSION = "0.12.1"
+  VERSION = "0.12.2"
 
   extend LibOpenApiImport
 
@@ -81,18 +81,16 @@ class OpenApiImport
 
       raw[:host] if raw.key?(:host)
       base_path = raw[:basePath] if raw.key?(:basePath)
-      module_name = raw[:info][:title].camel_case
-      module_version = "V#{raw[:info][:version].to_s.snake_case}"
+      module_name = ruby_constant_name(raw[:info][:title])
+      module_version = ruby_module_version(raw[:info][:version])
 
       output = []
       output_header = []
       output_header << ("#" * 50)
-      output_header << "# #{raw[:info][:title]}"
-      output_header << "# version: #{raw[:info][:version]}"
+      output_header.concat comment_lines(raw[:info][:title])
+      output_header.concat comment_lines(raw[:info][:version], prefix: "# version: ")
       output_header << "# description: "
-      raw[:info][:description].to_s.split("\n").each do |d|
-        output_header << "#     #{d}" unless d == ""
-      end
+      output_header.concat comment_lines(raw[:info][:description], prefix: "#     ")
       output_header << ("#" * 50)
 
       output_header << "module Swagger"
@@ -124,7 +122,7 @@ class OpenApiImport
           if %w[get post put delete patch].include?(met.to_s.downcase)
             params = []
             params_path = []
-            params_query = []
+            params_query = {}
             params_required = []
             params_data = []
             description_parameters = []
@@ -145,9 +143,9 @@ class OpenApiImport
               method_name.chop! if method_name[-1] == "_"
             elsif create_method_name == :operation_id
               if ((name_for_module == :tags) || (name_for_module == :tags_file)) && cont.key?(:tags) && cont[:tags].is_a?(Array) && cont[:tags].size.positive?
-                metnametmp = cont[:operationId].gsub(/^#{cont[:tags].join}[\s_]*/, "")
+                metnametmp = cont[:operationId].gsub(/^#{Regexp.escape(cont[:tags].join)}[\s_]*/, "")
                 cont[:tags].join.split.each do |tag|
-                  metnametmp = metnametmp.gsub(/^#{tag}[\s_]*/i, "")
+                  metnametmp = metnametmp.gsub(/^#{Regexp.escape(tag)}[\s_]*/i, "")
                 end
                 metnametmp = met if metnametmp == ""
               else
@@ -155,14 +153,15 @@ class OpenApiImport
               end
               method_name = metnametmp.to_s.snake_case
             elsif ((name_for_module == :tags) || (name_for_module == :tags_file)) && cont.key?(:tags) && cont[:tags].is_a?(Array) && cont[:tags].size.positive?
-              method_name = cont[:operationId].gsub(/^#{cont[:tags].join}[\s_]*/, "")
+              method_name = cont[:operationId].gsub(/^#{Regexp.escape(cont[:tags].join)}[\s_]*/, "")
               cont[:tags].join.split.each do |tag|
-                method_name = method_name.gsub(/^#{tag}[\s_]*/i, "")
+                method_name = method_name.gsub(/^#{Regexp.escape(tag)}[\s_]*/i, "")
               end
               method_name = met if method_name == ""
             else
               method_name = cont[:operationId]
             end
+            method_name = ruby_method_name(method_name, preserve_case: create_method_name == :operationId)
             path_txt = path.path.dup.to_s
             if [:path, :path_file, :tags, :tags_file].include?(name_for_module)
               old_module_requests = module_requests
@@ -173,17 +172,20 @@ class OpenApiImport
                   module_requests = "Root"
                 else
                   res_path = path_requests.scan(/(\w+)/)
-                  module_requests = res_path[0][0].camel_case
+                  module_requests = ruby_constant_name(res_path[0][0])
                 end
               elsif cont.key?(:tags) && cont[:tags].is_a?(Array) && cont[:tags].size.positive?
-                module_requests = cont[:tags].join(" ").camel_case
+                module_requests = ruby_constant_name(cont[:tags].join(" "))
               else
                 module_requests = "Undefined"
               end
 
               if /^(?<vers>v\d+)/i =~ method_name
                 method_name = method_name.gsub(/^#{vers}_?/, "")
-                module_requests = (vers.capitalize + module_requests).camel_case unless module_requests.start_with?(vers)
+                method_name = ruby_method_name(method_name, preserve_case: create_method_name == :operationId)
+                unless module_requests.start_with?(vers)
+                  module_requests = ruby_constant_name(vers.capitalize + module_requests)
+                end
               end
 
               if old_module_requests != module_requests
@@ -204,16 +206,16 @@ class OpenApiImport
             end
 
             output << ""
-            output << "# operationId: #{cont[:operationId]}, method: #{met}"
-            output << "# summary: #{cont[:summary].split("\n").join("\n#          ")}" if cont.key?(:summary)
-            if cont[:description].to_s.split("\n").empty?
-              output << "# description: #{cont[:description]}"
-            else
-              output << "# description: "
-              cont[:description].to_s.split("\n").each do |d|
-                output << "#     #{d}" unless d == ""
+            output.concat comment_lines("#{cont[:operationId]}, method: #{met}", prefix: "# operationId: ")
+            if cont.key?(:summary)
+              summary_lines = cont[:summary].to_s.split(/\R/)
+              output << "# summary: #{summary_lines[0]}" unless summary_lines.empty?
+              summary_lines.drop(1).each do |line|
+                output << "#          #{line}" unless line.empty?
               end
             end
+            output << "# description: "
+            output.concat comment_lines(cont[:description], prefix: "#     ")
 
             mock_example = []
 
@@ -223,18 +225,19 @@ class OpenApiImport
 
                 data_pattern += get_patterns("", v[:schema]) if v.key?(:schema)
                 data_pattern.uniq!
-                resp_description = v[:description].to_s.gsub("'", %q(\\\'))
+                response_key = ruby_symbol_key(k)
+                resp_description = v[:description].to_s.inspect
                 if response_example.empty?
-                  responses << "'#{k}': { message: '#{resp_description}'}, "
+                  responses << "#{response_key} { message: #{resp_description}}, "
                 else
-                  responses << "'#{k}': { "
-                  responses << "message: '#{resp_description}', "
+                  responses << "#{response_key} { "
+                  responses << "message: #{resp_description}, "
                   responses << "data: "
                   responses << response_example
                   responses << "},"
                   if mock_response && mock_example.empty?
-                    mock_example << "code: '#{k}',"
-                    mock_example << "message: '#{resp_description}',"
+                    mock_example << "code: #{k.to_s.inspect},"
+                    mock_example << "message: #{resp_description},"
                     mock_example << "data: "
                     mock_example << response_example
                   end
@@ -262,43 +265,40 @@ class OpenApiImport
                 end
 
                 if p[:in] == "path"
-                  if create_method_name == :operationId
-                    param_name = p[:name]
-                    path_txt = path_txt.gsub("{#{param_name}}", "\#{#{param_name}}")
-                  else
-                    param_name = p[:name].to_s.snake_case
-                    path_txt = path_txt.gsub("{#{p[:name]}}", "\#{#{param_name}}")
-                  end
+                  param_name = ruby_parameter_name(p[:name])
+                  path_txt = path_txt.gsub("{#{p[:name]}}", "\#{#{param_name}}")
                   unless params_path.include?(param_name)
                     if create_constants
-                      params_path << "#{param_name}: #{param_name.upcase}"
-                      required_constants << param_name.upcase
+                      constant_name = ruby_environment_constant(param_name)
+                      params_path << "#{param_name}: #{constant_name}"
+                      required_constants << constant_name
                     else
                       params_path << param_name
                     end
                     @logger.warn "Description key is missing for #{met} #{path.path} #{p[:name]}" if p[:description].nil?
-                    description_parameters << "#    #{p[:name]}: (#{type}) #{"(required)" if p[:required].to_s == "true"} #{p[:description].to_s.split("\n").join("\n#\t\t\t")}"
+                    description_parameters.concat parameter_comment_lines(p[:name], type, p[:required], p[:description])
                   end
                 elsif p[:in] == "query"
-                  params_query << p[:name]
-                  params_required << p[:name] if p[:required].to_s == "true"
+                  param_name = ruby_parameter_name(p[:name])
+                  params_query[param_name] = p[:name].to_s
+                  params_required << param_name if p[:required].to_s == "true"
                   @logger.warn "Description key is missing for #{met} #{path.path} #{p[:name]}" if p[:description].nil?
-                  description_parameters << "#    #{p[:name]}: (#{type}) #{"(required)" if p[:required].to_s == "true"} #{p[:description].to_s.split("\n").join("\n#\t\t\t")}"
+                  description_parameters.concat parameter_comment_lines(p[:name], type, p[:required], p[:description])
                 elsif (p[:in] == "formData") || (p[:in] == "formdata")
-                  description_parameters << "#    #{p[:name]}: (#{p[:type]}) #{p[:description].split("\n").join("\n#\t\t\t")}"
+                  description_parameters.concat parameter_comment_lines(p[:name], p[:type], p[:required], p[:description])
 
                   case p[:type]
                   when /^string$/i
-                    data_form << "#{p[:name]}: ''"
+                    data_form << "#{ruby_hash_key(p[:name])} ''"
                     data_form_hash[p[:name].to_sym] = ""
                   when /^boolean$/i
-                    data_form << "#{p[:name]}: true"
+                    data_form << "#{ruby_hash_key(p[:name])} true"
                     data_form_hash[p[:name].to_sym] = true
                   when /^number$/i
-                    data_form << "#{p[:name]}: 0"
+                    data_form << "#{ruby_hash_key(p[:name])} 0"
                     data_form_hash[p[:name].to_sym] = 0
                   when /^integer$/i
-                    data_form << "#{p[:name]}: 0"
+                    data_form << "#{ruby_hash_key(p[:name])} 0"
                     data_form_hash[p[:name].to_sym] = 0
                   else
                     puts "! on formData not supported type #{p[:type]}"
@@ -356,7 +356,7 @@ class OpenApiImport
                           end
 
                           if dpv.keys.include?(:description)
-                            description_parameters << "#    #{dpk}: (#{dpv[:type]}) #{dpv[:description].split("\n").join("\n#\t\t\t")}"
+                            description_parameters.concat parameter_comment_lines(dpk, dpv[:type], false, dpv[:description])
                           end
 
                           data_pattern += get_patterns(dpk, dpv)
@@ -377,13 +377,7 @@ class OpenApiImport
                             data_read_only << dpk
                           end
                           if dpv.keys.include?(:default)
-                            if dpv[:default].nil?
-                              data_default << "#{dpk}: nil"
-                            elsif dpv.type != "string"
-                              data_default << "#{dpk}: #{dpv[:default]}"
-                            else
-                              data_default << "#{dpk}: '#{dpv[:default]}'"
-                            end
+                            data_default << "#{ruby_hash_key(dpk)} #{dpv[:default].inspect}"
                           end
 
                           params_data_hash[dpk] = build_example_value(dpv)
@@ -392,13 +386,13 @@ class OpenApiImport
                             params_data << get_examples({ dpk => dpv }, :only_value, true).join
                             params_data[-1].chop!.chop! if params_data[-1].to_s[-2..] == ", "
                             params_data.pop if params_data[-1].match?(/^\s*$/im)
+                          elsif dpv.keys.include?(:example)
+                            raw = dpv[:example].is_a?(Array) && dpv.type != "array" ? dpv[:example][0] : dpv[:example]
+                            params_data << "#{ruby_hash_key(dpk)} #{raw.inspect}"
+                          elsif valv.to_s.empty?
+                            params_data << "#{ruby_hash_key(dpk)} \"\""
                           else
-                            if valv.to_s == ""
-                              valv = '""'
-                            elsif valv.include?('"')
-                              valv = valv.gsub('"', "'") unless valv.include?("'")
-                            end
-                            params_data << "#{dpk}: #{valv}"
+                            params_data << "#{ruby_hash_key(dpk)} #{valv}"
                           end
                         end
                         if params_data.size.positive?
@@ -420,7 +414,7 @@ class OpenApiImport
 
                     unless data_required.empty?
                       data_required.uniq!
-                      output << "# required data: #{data_required.inspect}"
+                      output.concat comment_lines(data_required.inspect, prefix: "# required data: ")
                     end
                   end
                 elsif p[:in] == "header"
@@ -438,32 +432,34 @@ class OpenApiImport
                   if create_constants
                     if params_query.include?(pr)
                       if create_method_name == :operationId
-                        path_txt += "#{pr}=\#{#{pr}}&"
-                        params << "#{pr}: #{pr.upcase}"
-                        required_constants << pr.upcase
+                        constant_name = ruby_environment_constant(pr)
+                        path_txt += "#{params_query[pr]}=\#{#{pr}}&"
+                        params << "#{pr}: #{constant_name}"
                       else
-                        path_txt += "#{pr}=\#{#{pr.to_s.snake_case}}&"
-                        params << "#{pr.to_s.snake_case}: #{pr.to_s.snake_case.upcase}"
-                        required_constants << pr.to_s.snake_case.upcase
+                        parameter_name = ruby_parameter_name(pr)
+                        constant_name = ruby_environment_constant(parameter_name)
+                        path_txt += "#{params_query[pr]}=\#{#{parameter_name}}&"
+                        params << "#{parameter_name}: #{constant_name}"
                       end
+                      required_constants << constant_name
                     end
                   elsif params_query.include?(pr)
                     if create_method_name == :operationId
-                      path_txt += "#{pr}=\#{#{pr}}&"
+                      path_txt += "#{params_query[pr]}=\#{#{pr}}&"
                       params << pr.to_s
                     else
-                      path_txt += "#{pr}=\#{#{pr.to_s.snake_case}}&"
+                      path_txt += "#{params_query[pr]}=\#{#{pr.to_s.snake_case}}&"
                       params << pr.to_s.snake_case.to_s
                     end
                   end
                 end
-                params_query.each do |pq|
+                params_query.each do |pq, query_name|
                   unless params_required.include?(pq)
                     if create_method_name == :operationId
-                      path_txt += "#{pq}=\#{#{pq}}&"
+                      path_txt += "#{query_name}=\#{#{pq}}&"
                       params << "#{pq}: ''"
                     else
-                      path_txt += "#{pq}=\#{#{pq.to_s.snake_case}}&"
+                      path_txt += "#{query_name}=\#{#{pq.to_s.snake_case}}&"
                       params << "#{pq.to_s.snake_case}: ''"
                     end
                   end
@@ -480,8 +476,9 @@ class OpenApiImport
               paramst = []
               prms = path_txt.scan(/[^#]{(\w+)}/)
               prms.each do |p|
-                paramst << p[0].to_s.snake_case
-                path_txt = path_txt.gsub("{#{p[0]}}", "\#{#{p[0].to_s.snake_case}}")
+                param_name = ruby_parameter_name(p[0])
+                paramst << param_name
+                path_txt = path_txt.gsub("{#{p[0]}}", "\#{#{param_name}}")
               end
               paramst.concat params
               params = paramst
@@ -491,20 +488,21 @@ class OpenApiImport
 
             output << "{"
 
-            output << "name: \"#{module_requests}.#{method_name}\","
+            output << "name: #{"#{module_requests}.#{method_name}".inspect},"
 
-            output << "path: \"#{base_path}#{path_txt}\","
+            interpolation_names = path_txt.scan(/#\{([A-Za-z_][A-Za-z0-9_]*)\}/).flatten
+            output << "path: #{ruby_interpolated_string("#{base_path}#{path_txt}", interpolation_names)},"
 
             output << "method: :#{met}," if met.to_s != ""
 
             unless data_required.empty?
               output << "data_required: ["
-              output << ":'#{data_required.uniq.join("', :'")}'"
+              output << data_required.uniq.inspect[1..-2]
               output << "],"
             end
             unless data_read_only.empty?
               output << "data_read_only: ["
-              output << ":'#{data_read_only.uniq.join("', :'")}'"
+              output << data_read_only.uniq.inspect[1..-2]
               output << "],"
             end
             unless data_default.empty?
@@ -552,7 +550,7 @@ class OpenApiImport
                 data_examples[0].each do |edata|
                   read_only = false
                   data_read_only.each do |rdata|
-                    if edata.scan(/^#{rdata}:/).size.positive?
+                    if edata.scan(/^#{Regexp.escape(rdata.to_s)}:/).size.positive?
                       read_only = true
                       break
                     elsif edata.scan(":").empty?
@@ -632,7 +630,8 @@ class OpenApiImport
           output = output_header + out_mod + output_footer
           output_txt = output.join("\n")
           requests_file_path = "#{file_to_convert}_#{mod}.rb"
-          requires_txt += "require_relative '#{File.basename(swagger_file)}_#{mod}'\n"
+          required_path = "#{File.basename(swagger_file)}_#{mod}"
+          requires_txt += "require_relative #{required_path.inspect}\n"
           if return_data
             generated_files[requests_file_path] = output_txt
           else
